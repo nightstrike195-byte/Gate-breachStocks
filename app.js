@@ -334,45 +334,34 @@
   const BASE_CHARACTERS = [
     mk("kaien_dazhen", "Kaien Dazhen", "human", [0,1,2,3,4,5], 100, 380, 520, 180),
     mk("raijin_kurozawa", "Raijin Kurozawa", "human", [0,1,2,3,4,5], 101, 820, 900, 420),
-
     mk("lara_kurozawa", "Lara Kurozawa", "human", [5], 102, 520, 720, 260),
     mk("yankovich_dazhen", "Yankovich Dazhen", "human", [5], 50, 680, 780, 320),
-
     mk("kopa", "Kopa", "human", [4], 12, 360, 520, 160),
     mk("old_man", "The Old Man", "npc", [0,1], 1, 420, 500, 140),
-
     mk("leo", "Leo", "zodiac", [2], 70, 880, 960, 520),
     mk("virgo", "Virgo", "zodiac", [2,3], 71, 820, 920, 480),
     mk("pisces", "Pisces", "zodiac", [1,2,4], 72, 760, 890, 440),
     mk("capricorn", "Capricorn", "zodiac", [5], 73, 740, 880, 430),
     mk("scorpio", "Scorpio", "zodiac", [5], 74, 730, 870, 420),
-
     mk("white_ranger", "White Ranger", "neo", [0,2,4], 10, 650, 740, 320),
     mk("pink_neo_ranger", "Pink Neo-Ranger", "neo", [3], 210, 720, 820, 360),
     mk("gold_neo_ranger", "Gold Neo-Ranger", "neo", [2], 211, 700, 820, 360),
     mk("kyro_okabe", "Kyro Okabe (Red Neo-Ranger)", "neo", [3], 200, 800, 860, 410),
     mk("vt_082", "V.T-082 (Blue Neo-Ranger?)", "neo", [4], 205, 600, 720, 300),
-
     mk("kravon", "Kravon", "human", [4], 16, 520, 720, 250),
     mk("broke_little_girl", "Broke Little Girl", "npc", [4], 17, 250, 500, 80),
-
     mk("paws", "Paws", "ranger", [5], 300, 420, 600, 220),
     mk("kory", "Kory", "ranger", [5], 301, 420, 600, 220),
     mk("mon", "Mon", "ranger", [5], 302, 420, 600, 220),
-
     mk("sora_k", "Sora, K", "ranger", [5], 310, 520, 680, 260),
     mk("fross", "Fross", "ranger", [5], 311, 480, 640, 240),
     mk("jessie", "Jessie", "ranger", [5], 312, 560, 720, 280),
-
     mk("nora", "Nora", "human", [5], 313, 560, 710, 270),
     mk("gaia_kurozawa", "Gaia Kurozawa", "human", [4], 314, 460, 680, 220),
-
     mk("uriel", "Uriel", "ranger", [4], 315, 510, 690, 260),
-
     mk("rico_e", "E", "human", [5], 316, 440, 640, 230),
     mk("riko_dazhen", "Riko Dazhen", "human", [5], 317, 470, 700, 250),
     mk("rico_d", "Rico D", "human", [5], 318, 470, 700, 250),
-
     mk("milo", "Milo", "npc", [5], 400, 340, 560, 140),
     mk("clover", "Clover", "npc", [5], 401, 260, 520, 110),
     mk("krahs", "Krahs", "npc", [5], 402, 260, 520, 110),
@@ -381,15 +370,12 @@
     mk("ulti", "Ulti", "npc", [5], 405, 260, 520, 110),
     mk("monty", "Monty", "npc", [5], 410, 260, 520, 110),
     mk("vlair", "Vlair", "npc", [5], 411, 320, 600, 160),
-
     mk("lora", "Lora", "npc", [5], 420, 280, 540, 120),
     mk("hiroshi", "Hiroshi", "npc", [5], 421, 310, 560, 140),
     mk("takeru", "Takeru", "npc", [5], 422, 380, 660, 180),
-
     mk("purple_majiranger", "Purple MajiRanger", "ranger", [5], 500, 520, 720, 260),
     mk("teal_majiranger", "Teal MajiRanger", "ranger", [3,5], 501, 520, 720, 260),
     mk("crimson_majiranger", "Crimson MajiRanger", "ranger", [3,5], 502, 520, 720, 260),
-
     mk("hope_maji", "Hope Maji", "maji", [4], 600, 840, 950, 520),
     mk("despair_maji", "Despair Maji", "maji", [5], 601, 760, 900, 440),
     mk("convergence_maji", "Convergence Maji", "maji", [5], 602, 620, 820, 360),
@@ -397,7 +383,6 @@
     mk("mycelium_maji", "Mycelium Maji", "maji", [5], 604, 700, 860, 410),
     mk("thorn_maji", "Thorn Maji", "maji", [0], 605, 520, 720, 260),
     mk("drool_maji", "Drool Maji", "maji", [1], 606, 560, 740, 280),
-
     mk("goat_maji_hybrid", "Goat Maji Hybrid", "hybrid", [2], 607, 540, 760, 300),
     mk("bananasaurous_maji", "Bananasaurous Maji", "maji", [2], 608, 580, 780, 320),
     mk("shark_maji", "Shark Maji", "maji", [3], 609, 560, 740, 280),
@@ -408,17 +393,14 @@
     mk("frog_maji_hybrid", "Frog Maji (Hybrid)", "hybrid", [4], 614, 540, 740, 300),
     mk("immortality_maji", "Immortality Maji", "maji", [4], 617, 740, 940, 480),
     mk("sphinx_maji", "Sphinx Maji", "maji", [2,4], 618, 720, 880, 420),
-
     mk("azriel_polaris", "Azriel Polaris", "human", [5], 700, 740, 860, 420),
     mk("mother_spica", "Mother Spica", "human", [5], 701, 700, 820, 400),
     mk("artoria", "Artoria", "human", [5], 702, 680, 820, 380),
     mk("manager", "Manager", "npc", [5], 703, 360, 540, 160),
-
     mk("ashen_star", "Ashen Star", "npc", [3,5], 710, 520, 780, 300),
     mk("greed_maji", "Greed Maji", "maji", [4], 720, 720, 920, 460),
     mk("donna", "Donna", "human", [3], 721, 420, 640, 210),
     mk("bowens_mom", "Bowen's Mom", "human", [3], 722, 240, 520, 120),
-
     mk("soul_bread_baker", "Soul Bread Baker", "npc", [2], 800, 360, 680, 180),
     mk("walking_tree_maji", "Walking Tree Maji", "maji", [4], 902, 420, 720, 220),
   ];
@@ -434,6 +416,9 @@
     EDIT_MEDIA: "gb_entity_media_v10",
     ADMIN: "gb_admin_state_v10",
     PICKS: "gb_bulk_picks_v10",
+
+    // ✅ NEW: 5 folders (J/M/B/K/R) each with its own portfolio
+    FOLDERS: "gb_folders_v10",
   };
 
   const MAX_HISTORY = 90;
@@ -448,7 +433,10 @@
    * LOAD STATE
    ***********************/
   let market = loadJSON(LS.MARKET, null);
+
+  // OLD single-portfolio load (we use it as a fallback seed)
   let portfolio = loadJSON(LS.PORT, null);
+
   const ui = loadJSON(LS.UI, {
     arc: "all",
     type: "all",
@@ -458,7 +446,15 @@
   }) || { arc:"all", type:"all", sort:"pop_desc", search:"", speedMs:500 };
 
   market = validateOrInitMarket(market);
-  portfolio = validateOrInitPortfolio(portfolio);
+
+  // ✅ NEW: folder portfolios (J/M/B/K/R), each starts at 5,000 pts
+  const FOLDERS = ["J","M","B","K","R"];
+  let foldersState = loadJSON(LS.FOLDERS, null);
+  foldersState = validateOrInitFolders(foldersState, portfolio);
+  let activeFolder = foldersState.active;
+
+  // IMPORTANT: `portfolio` variable is ALWAYS the ACTIVE folder portfolio
+  portfolio = foldersState.data[activeFolder];
 
   // ADMIN STATE: per-id overrides (cap/frozen/volMult)
   let adminState = loadJSON(LS.ADMIN, {});
@@ -548,10 +544,17 @@
   const historyList = $("#historyList");
 
   // Nav pills + panels
-  const navBtns = Array.from(document.querySelectorAll("[data-nav]"));
+  // ✅ CHANGED: let (so we can inject a new tab and re-scan)
+  let navBtns = Array.from(document.querySelectorAll("[data-nav]"));
   const marketPanel = $("#marketPanel");
   const projectsPanel = $("#projectsPanel");
   const editPanel = $("#editPanel");
+
+  // ✅ NEW: folders panel (injected, no HTML changes)
+  let foldersPanel = $("#foldersPanel");
+  injectFoldersTab();
+  // re-scan nav buttons after injection
+  navBtns = Array.from(document.querySelectorAll("[data-nav]"));
 
   // Edit panel (media)
   const editCharSelect = $("#editCharSelect");
@@ -681,38 +684,227 @@
   }
 
   /***********************
-   * NAV (FIXED: edit/admin always prompts + admin panel stays)
+   * ✅ NEW: FOLDERS TAB + 5 PORTFOLIOS (J/M/B/K/R)
+   ***********************/
+  function validateOrInitFolders(s, legacyPortfolio){
+    const mkPort = () => validateOrInitPortfolio({ balance: 5000, positions: {}, netWorthHistory: [5000] });
+
+    // if old single portfolio exists, we can seed folder J with it (optional)
+    const legacy = validateOrInitPortfolio(legacyPortfolio);
+    const base = {
+      active: "J",
+      data: {
+        J: legacy || mkPort(),
+        M: mkPort(),
+        B: mkPort(),
+        K: mkPort(),
+        R: mkPort(),
+      }
+    };
+
+    if(!s || typeof s !== "object" || !s.data || typeof s.data !== "object") {
+      saveJSON(LS.FOLDERS, base);
+      return base;
+    }
+
+    const out = { active: "J", data: {} };
+    out.active = FOLDERS.includes(String(s.active)) ? String(s.active) : "J";
+
+    for(const f of FOLDERS){
+      out.data[f] = validateOrInitPortfolio(s.data?.[f]);
+      if(!out.data[f] || typeof out.data[f] !== "object") out.data[f] = mkPort();
+      // hard ensure default start if somehow empty
+      out.data[f].balance = num(out.data[f].balance, 5000);
+      if(!Array.isArray(out.data[f].netWorthHistory) || !out.data[f].netWorthHistory.length){
+        out.data[f].netWorthHistory = [out.data[f].balance];
+      }
+    }
+
+    saveJSON(LS.FOLDERS, out);
+    return out;
+  }
+
+  function saveActiveFolder(){
+    // write the currently-active `portfolio` back into foldersState
+    foldersState.active = activeFolder;
+    foldersState.data[activeFolder] = portfolio;
+    saveJSON(LS.FOLDERS, foldersState);
+
+    // keep old single key in sync too (so nothing else breaks)
+    saveJSON(LS.PORT, portfolio);
+  }
+
+  function switchFolder(letter){
+    const f = String(letter || "").toUpperCase();
+    if(!FOLDERS.includes(f)) return;
+
+    // save current
+    saveActiveFolder();
+
+    // swap
+    activeFolder = f;
+    foldersState.active = f;
+
+    portfolio = validateOrInitPortfolio(foldersState.data[f]);
+    foldersState.data[f] = portfolio;
+    saveJSON(LS.FOLDERS, foldersState);
+
+    // UI refresh
+    renderAll();
+    renderFoldersPanel();
+  }
+
+  function resetFolder(letter){
+    const f = String(letter || "").toUpperCase();
+    if(!FOLDERS.includes(f)) return;
+
+    foldersState.data[f] = validateOrInitPortfolio({ balance: 5000, positions: {}, netWorthHistory: [5000] });
+    saveJSON(LS.FOLDERS, foldersState);
+
+    if(activeFolder === f){
+      portfolio = foldersState.data[f];
+      renderAll();
+    }
+    renderFoldersPanel();
+  }
+
+  function injectFoldersTab(){
+    // add nav button (tries to match your existing nav style)
+    const navHost = document.querySelector(".navPills") || document.querySelector("#navPills") || document.body;
+    if(navHost && !document.querySelector('[data-nav="folders"]')){
+      const btn = document.createElement("button");
+      btn.className = "pill";
+      btn.type = "button";
+      btn.dataset.nav = "folders";
+      btn.textContent = "Folders";
+      navHost.appendChild(btn);
+    }
+
+    // create panel
+    if(!$("#foldersPanel")){
+      foldersPanel = document.createElement("div");
+      foldersPanel.id = "foldersPanel";
+      foldersPanel.style.display = "none";
+      foldersPanel.style.marginTop = "14px";
+
+      // try to append near other panels
+      const panelsHost =
+        (marketPanel && marketPanel.parentElement) ||
+        (projectsPanel && projectsPanel.parentElement) ||
+        document.body;
+
+      panelsHost.appendChild(foldersPanel);
+    }
+
+    renderFoldersPanel();
+  }
+
+  function renderFoldersPanel(){
+    if(!foldersPanel) foldersPanel = $("#foldersPanel");
+    if(!foldersPanel) return;
+
+    const rows = FOLDERS.map(f => {
+      const p = foldersState.data[f];
+      const bal = Math.floor(num(p?.balance, 5000));
+      const nw = Math.floor(calcNetWorthFor(p));
+      const isActive = (f === activeFolder);
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid rgba(255,255,255,.10);border-radius:12px;background:rgba(0,0,0,.18);">
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <div style="font-weight:800;font-size:14px;letter-spacing:.4px">Folder ${f} ${isActive ? '<span style="font-size:12px;opacity:.8">(ACTIVE)</span>' : ''}</div>
+            <div style="font-size:12px;opacity:.78">Balance: <b>${bal}</b> • Net Worth: <b>${nw}</b></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn ${isActive ? "ghost" : ""}" type="button" data-folder-switch="${f}">${isActive ? "Selected" : "Switch"}</button>
+            <button class="btn ghost" type="button" data-folder-reset="${f}">Reset → 5000</button>
+          </div>
+        </div>
+      `;
+    }).join(`<div style="height:10px"></div>`);
+
+    foldersPanel.innerHTML = `
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px">
+        <div>
+          <div style="font-weight:900;font-size:18px">Folder Accounts</div>
+          <div style="opacity:.75;font-size:12px">J / M / B / K / R • each starts at 5,000 points • separate portfolios</div>
+        </div>
+        <div style="font-size:12px;opacity:.75">Current: <b>${activeFolder}</b></div>
+      </div>
+      ${rows}
+    `;
+
+    // bind
+    foldersPanel.querySelectorAll("[data-folder-switch]").forEach(b => {
+      b.addEventListener("click", () => {
+        if(!isEditAuthed()){
+          // switching folders is not “admin”, but it’s part of your “admin panel” request
+          // if you want switching always allowed, remove this guard
+          requireEditAuth(true);
+          if(!isEditAuthed()) return;
+        }
+        switchFolder(b.getAttribute("data-folder-switch"));
+      });
+    });
+    foldersPanel.querySelectorAll("[data-folder-reset]").forEach(b => {
+      b.addEventListener("click", () => {
+        if(!isEditAuthed()) { requireEditAuth(true); if(!isEditAuthed()) return; }
+        const f = b.getAttribute("data-folder-reset");
+        if(confirm(`Reset Folder ${f} back to 5,000 and wipe its positions?`)){
+          resetFolder(f);
+        }
+      });
+    });
+  }
+
+  function calcNetWorthFor(p){
+    const pos = p?.positions || {};
+    let sum = num(p?.balance, 0);
+    for(const [id, pp] of Object.entries(pos)){
+      if(!pp || pp.shares <= 0) continue;
+      const c = market.byId[id];
+      if(!c) continue;
+      sum += pp.shares * c.points;
+    }
+    return sum;
+  }
+
+  /***********************
+   * NAV (UPDATED: add folders tab)
    ***********************/
   function setActivePanel(which){
-    // Support either data-nav="edit" OR data-nav="admin"
     const isEditLike = (which === "edit" || which === "admin");
+    const isFolders = (which === "folders");
 
     if(isEditLike){
-      // show edit panel first so prompt + unlock UI always exists
       if(editPanel) editPanel.style.display = "";
       if(projectsPanel) projectsPanel.style.display = "none";
       if(marketPanel) marketPanel.style.display = "none";
+      if(foldersPanel) foldersPanel.style.display = "none";
 
       ensureEditLockUI();
       setEditPanelEnabled(isEditAuthed());
 
-      // PASSWORD GATE
       const ok = requireEditAuth(false);
       if(!ok){
-        // If they cancel / wrong password, stay on market
         if(editPanel) editPanel.style.display = "none";
         if(projectsPanel) projectsPanel.style.display = "";
         if(marketPanel) marketPanel.style.display = "";
+        if(foldersPanel) foldersPanel.style.display = "none";
         navBtns.forEach(b => b.classList.toggle("active", b.dataset.nav === "market"));
         return;
       }
-
-      // unlocked
       setEditPanelEnabled(true);
+    } else if(isFolders){
+      if(editPanel) editPanel.style.display = "none";
+      if(projectsPanel) projectsPanel.style.display = "none";
+      if(marketPanel) marketPanel.style.display = "none";
+      if(foldersPanel) foldersPanel.style.display = "";
+      renderFoldersPanel();
     } else {
       if(editPanel) editPanel.style.display = "none";
       if(projectsPanel) projectsPanel.style.display = "";
       if(marketPanel) marketPanel.style.display = "";
+      if(foldersPanel) foldersPanel.style.display = "none";
     }
 
     navBtns.forEach(b => b.classList.toggle("active", b.dataset.nav === which));
@@ -866,6 +1058,9 @@
     }
 
     market._refreshEditSelect = refreshSelect;
+
+    // ✅ NEW: inject “admin can give themselves stocks/cash” controls
+    ensureAdminPortfolioTools();
   }
 
   /***********************
@@ -893,960 +1088,6 @@
       const c = market.byId[id];
       if(!c) return;
 
+      // already does: set price, cap, frozen (stagnate), volatility
       const capV = clamp(num(adminSetCap?.value, c.cap ?? 1000), 1, 1000);
-      const priceV = clamp(num(adminSetPrice?.value, c.points), 1, capV);
-      const frozenV = String(adminFreeze?.value) === "true";
-      const volV = clamp(num(adminVolMult?.value, c.volMult ?? 1), 0.1, 10);
-
-      c.cap = capV;
-      c.points = clamp(priceV, 1, c.cap);
-      c.frozen = frozenV;
-      c.volMult = volV;
-
-      c.history = Array.isArray(c.history) ? c.history.slice(-MAX_HISTORY) : [];
-      if(!c.history.length) c.history = seedHistory(c.points);
-      c.history.push(c.points);
-      if(c.history.length > MAX_HISTORY) c.history.shift();
-
-      adminState[id] = { cap: c.cap, frozen: c.frozen, volMult: c.volMult };
-      saveJSON(LS.ADMIN, adminState);
-
-      saveJSON(LS.MARKET, market);
-      renderAll();
-      if(selectedId === id) openDetailModal(id);
-    });
-  }
-
-  if(adminNukeHistoryBtn){
-    adminNukeHistoryBtn.addEventListener("click", () => {
-      if(!isEditAuthed()) return;
-      const id = editCharSelect?.value;
-      if(!id) return;
-      const c = market.byId[id];
-      if(!c) return;
-
-      c.history = seedHistory(c.points);
-      c.ticks = [];
-      c.lastDelta = 0;
-
-      saveJSON(LS.MARKET, market);
-      renderAll();
-      if(selectedId === id) openDetailModal(id);
-    });
-  }
-
-  if(addCharBtn){
-    addCharBtn.addEventListener("click", () => {
-      if(!isEditAuthed()) return;
-      const id = sanitizeId(String(newId?.value || ""));
-      const name = String(newName?.value || "").trim();
-      if(!id || !name) return;
-      if(market.byId[id]) return;
-
-      const type = String(newType?.value || "npc");
-      const arcs = parseArcs(String(newArcs?.value || ""));
-      const pop = clamp(num(newPop?.value, 500), 1, 1000);
-      const pot = clamp(num(newPot?.value, 500), 1, 1000);
-      const impact = clamp(num(newImpact?.value, 300), 1, 1000);
-
-      const debut = (market.list.reduce((m,c)=> Math.max(m, num(c.debutOrder, 0)), 0) + 1);
-      const basePrice = clamp(Math.round((pop*0.35 + pot*0.45 + impact*0.20) / 2), 1, 1000);
-
-      const c = mk(id, name, type, arcs, debut, pop, pot, basePrice);
-      c.ticker = tickerFrom(c);
-      c.cap = 1000;
-      c.frozen = false;
-      c.volMult = 1;
-      c.history = seedHistory(c.points);
-      c.ticks = [];
-      c.lastDelta = 0;
-
-      market.list.push(c);
-      market.byId[c.id] = c;
-
-      updateIndex();
-      saveJSON(LS.MARKET, market);
-
-      market._refreshEditSelect && market._refreshEditSelect();
-      if(editCharSelect){
-        editCharSelect.value = id;
-        if(editCharSelect.dispatchEvent) editCharSelect.dispatchEvent(new Event("change"));
-      }
-
-      renderAll();
-    });
-  }
-
-  if(removeCharBtn){
-    removeCharBtn.addEventListener("click", () => {
-      if(!isEditAuthed()) return;
-      const id = editCharSelect?.value;
-      if(!id) return;
-      const exists = market.byId[id];
-      if(!exists) return;
-
-      market.list = market.list.filter(x => x.id !== id);
-      delete market.byId[id];
-
-      delete portfolio.positions?.[id];
-      picksSet.delete(id);
-      delete mediaOverrides[id];
-      delete adminState[id];
-
-      saveJSON(LS.PICKS, Array.from(picksSet));
-      saveJSON(LS.EDIT_MEDIA, mediaOverrides);
-      saveJSON(LS.ADMIN, adminState);
-
-      if(wantedId === id){
-        wantedId = market.list[0]?.id || null;
-        saveJSON(LS.WANTED, wantedId);
-      }
-
-      updateIndex();
-      saveJSON(LS.MARKET, market);
-      saveJSON(LS.PORT, portfolio);
-
-      market._refreshEditSelect && market._refreshEditSelect();
-
-      renderAll();
-      closeModal();
-    });
-  }
-
-  function sanitizeId(s){
-    return String(s || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9_]+/g, "_")
-      .replace(/^_+|_+$/g, "");
-  }
-  function parseArcs(s){
-    if(!s.trim()) return [];
-    return s.split(",")
-      .map(x => clamp(num(x.trim(), -999), -999, 999))
-      .filter(x => Number.isFinite(x) && x >= 0);
-  }
-
-  /***********************
-   * BUY MULTIPLE QoL
-   ***********************/
-  function getQty(){
-    const el = $("#qtyInput");
-    if(!el) return 1;
-    return clamp(num(el.value, 1), 1, 999);
-  }
-
-  function buyMany(ids, qtyEach){
-    if(!ids.length) return;
-    qtyEach = clamp(num(qtyEach, 1), 1, 999);
-
-    for(const id of ids){
-      const c = market.byId[id];
-      if(!c) continue;
-      const cost = c.points * qtyEach;
-      if(portfolio.balance < cost) continue;
-      buy(id, qtyEach);
-    }
-  }
-
-  function sellMany(ids, qtyEach){
-    if(!ids.length) return;
-    qtyEach = clamp(num(qtyEach, 1), 1, 999);
-    for(const id of ids){
-      const pos = portfolio.positions?.[id];
-      if(!pos || pos.shares <= 0) continue;
-      sell(id, Math.min(qtyEach, pos.shares));
-    }
-  }
-
-  /***********************
-   * FIRST RENDER
-   ***********************/
-  renderAll();
-
-  /***********************
-   * RENDER CORE
-   ***********************/
-  function renderAll(){
-    renderHeader();
-    renderIndex();
-    renderMovers();
-    renderProjects();
-    renderPortfolio();
-    renderWanted();
-
-    saveJSON(LS.MARKET, market);
-    saveJSON(LS.PORT, portfolio);
-
-    const bulkCount = $("#bulkCount");
-    if(bulkCount) bulkCount.textContent = String(picksSet.size);
-  }
-
-  function renderHeader(){
-    safeText(dayEl, market.day);
-    safeText(balanceEl, Math.floor(portfolio.balance));
-    safeText(netWorthEl, Math.floor(calcNetWorth()));
-  }
-
-  /***********************
-   * FILTER + SORT
-   ***********************/
-  function getFilteredSorted(){
-    const q = (ui.search || "").trim().toLowerCase();
-    const arc = ui.arc ?? "all";
-    const type = ui.type ?? "all";
-
-    let list = market.list.slice();
-
-    if(arc !== "all"){
-      const arcNum = num(arc, -999);
-      list = list.filter(c => c.arcs.includes(arcNum));
-    }
-    if(type !== "all"){
-      list = list.filter(c => c.type === type);
-    }
-    if(q){
-      list = list.filter(c => {
-        const hay = `${c.name} ${c.ticker} ${c.type}`.toLowerCase();
-        return hay.includes(q);
-      });
-    }
-
-    switch(ui.sort){
-      case "pop_desc": list.sort((a,b)=> b.popularity - a.popularity); break;
-      case "pop_asc": list.sort((a,b)=> a.popularity - b.popularity); break;
-      case "oldest": list.sort((a,b)=> a.debutOrder - b.debutOrder); break;
-      case "newest": list.sort((a,b)=> b.debutOrder - a.debutOrder); break;
-      case "potential_desc": list.sort((a,b)=> b.potential - a.potential); break;
-      case "potential_asc": list.sort((a,b)=> a.potential - b.potential); break;
-      case "price_desc": list.sort((a,b)=> b.points - a.points); break;
-      case "price_asc": list.sort((a,b)=> a.points - b.points); break;
-    }
-
-    return list;
-  }
-
-  /***********************
-   * PROJECT CARDS + MULTI SELECT CHECKBOX
-   ***********************/
-  function renderProjects(){
-    const list = getFilteredSorted();
-    if(resultCount) safeText(resultCount, `${list.length} results`);
-    if(!projectsGrid) return;
-
-    projectsGrid.innerHTML = "";
-    for(const c of list){
-      const card = buildCard(c);
-      projectsGrid.appendChild(card);
-
-      const sparkCanvas = card.querySelector("canvas.cardSpark");
-      drawLine(sparkCanvas, c.history, { grid:false, padding:10 });
-    }
-  }
-
-  function buildCard(c){
-    const owned = portfolio.positions[c.id]?.shares || 0;
-    const delta = c.lastDelta || 0;
-
-    const selected = picksSet.has(c.id);
-
-    const el = document.createElement("div");
-    el.className = "card" + (selected ? " selected" : "");
-    el.innerHTML = `
-      <div class="cardTop">
-        <img class="cardImg" src="${getImage(c)}" alt="${escapeHtml(c.name)}">
-        <div class="pickBox" title="Select for bulk buy/sell">
-          <input type="checkbox" ${selected ? "checked" : ""} />
-          <span>Select</span>
-        </div>
-      </div>
-
-      <div class="cardDivider"></div>
-
-      <div class="cardBody">
-        <div class="cardRow">
-          <div>
-            <div class="cardName">${escapeHtml(c.name)}</div>
-            <div class="cardPrice">${Math.floor(c.points)} <span style="font-size:12px;opacity:.7">PTS</span></div>
-            <div class="cardOwned">Owned: <b>${owned}</b></div>
-          </div>
-          <div style="text-align:right">
-            <div class="ticker">$${escapeHtml(c.ticker)}</div>
-            <div class="delta ${delta>0?'good':delta<0?'bad':''}">Δ ${fmtDelta(delta)}</div>
-          </div>
-        </div>
-
-        <canvas class="cardSpark" width="240" height="56"></canvas>
-
-        <div class="cardBtns">
-          <button class="btn buy" type="button">BUY</button>
-          <button class="btn sell" type="button">SELL</button>
-        </div>
-      </div>
-    `;
-
-    const cb = el.querySelector(".pickBox input");
-    if(cb){
-      cb.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if(cb.checked) picksSet.add(c.id);
-        else picksSet.delete(c.id);
-        saveJSON(LS.PICKS, Array.from(picksSet));
-        el.classList.toggle("selected", cb.checked);
-
-        const bulkCount = $("#bulkCount");
-        if(bulkCount) bulkCount.textContent = String(picksSet.size);
-      });
-    }
-
-    const buyBtn = el.querySelector(".btn.buy");
-    const sellBtn = el.querySelector(".btn.sell");
-    if(buyBtn){
-      buyBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        buy(c.id, getQty());
-      });
-    }
-    if(sellBtn){
-      sellBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        sell(c.id, getQty());
-      });
-    }
-
-    el.addEventListener("click", () => {
-      wantedId = c.id;
-      saveJSON(LS.WANTED, wantedId);
-      renderWanted();
-
-      if(editCharSelect){
-        editCharSelect.value = c.id;
-        editCharSelect.dispatchEvent(new Event("change"));
-      }
-    });
-
-    el.addEventListener("dblclick", () => openDetailModal(c.id));
-
-    return el;
-  }
-
-  /***********************
-   * WANTED PANEL
-   ***********************/
-  function renderWanted(){
-    const c = wantedId ? market.byId[wantedId] : null;
-    if(!c){
-      if(wantedImg) wantedImg.src = placeholderImg("WANTED");
-      safeText(wantedName, "—");
-      safeText(wantedRole, "—");
-      safeText(wantedPrice, "0");
-      safeText(wantedOwned, "0");
-      safeText(wantedPop, "0");
-      safeText(wantedPot, "0");
-      safeText(wantedCap, "1000");
-      safeText(wantedFrozen, "LIVE");
-      safeHref(wantedLinkBtn, "#");
-      return;
-    }
-
-    if(wantedImg){
-      wantedImg.src = getImage(c);
-      wantedImg.alt = c.name;
-    }
-
-    safeText(wantedName, c.name);
-    safeText(wantedRole, String(c.type || "npc").toUpperCase());
-    safeText(wantedPrice, Math.floor(c.points));
-    safeText(wantedOwned, portfolio.positions[c.id]?.shares || 0);
-    safeText(wantedPop, c.popularity);
-    safeText(wantedPot, c.potential);
-    safeText(wantedCap, Math.floor(c.cap ?? 1000));
-    safeText(wantedFrozen, c.frozen ? "FROZEN" : "LIVE");
-
-    safeHref(wantedLinkBtn, getLink(c));
-  }
-
-  /***********************
-   * PORTFOLIO
-   ***********************/
-  function renderPortfolio(){
-    const positions = Object.entries(portfolio.positions || {})
-      .filter(([,p]) => p && p.shares > 0)
-      .map(([id,p]) => ({ id, ...p, c: market.byId[id] }))
-      .filter(x => x.c);
-
-    safeText(positionsCount, positions.length);
-
-    const h = portfolio.netWorthHistory || [];
-    const last = num(h[h.length - 1], calcNetWorth());
-    const prev = h.length > 1 ? num(h[h.length - 2], last) : last;
-    const d = Math.floor(last - prev);
-
-    if(nwDeltaEl){
-      nwDeltaEl.textContent = d >= 0 ? `+${d}` : `${d}`;
-      nwDeltaEl.style.color = d >= 0 ? "var(--good)" : "var(--bad)";
-    }
-
-    drawLine(netWorthChart, h.length ? h : [portfolio.balance], { grid:true, padding:14 });
-
-    if(!portfolioList) return;
-    portfolioList.innerHTML = positions.length
-      ? ""
-      : `<div style="color:var(--muted);font-size:12px;">No positions yet.</div>`;
-
-    for(const p of positions){
-      const row = document.createElement("div");
-      row.className = "posRow";
-      row.innerHTML = `
-        <div>
-          <div class="posName">${escapeHtml(p.c.name)}</div>
-          <div class="posMeta">${p.shares} shares • Avg ${Math.floor(p.avgCost)} PTS</div>
-        </div>
-        <div class="posValue">${Math.floor(p.shares * p.c.points)} PTS</div>
-      `;
-      portfolioList.appendChild(row);
-    }
-  }
-
-  function calcNetWorth(){
-    const pos = portfolio.positions || {};
-    let sum = num(portfolio.balance, 0);
-    for(const [id, p] of Object.entries(pos)){
-      if(!p || p.shares <= 0) continue;
-      const c = market.byId[id];
-      if(!c) continue;
-      sum += p.shares * c.points;
-    }
-    return sum;
-  }
-
-  /***********************
-   * INDEX + MOVERS
-   ***********************/
-  function renderIndex(){
-    const idx = Math.floor(num(market.indexHistory?.[market.indexHistory.length - 1], 0));
-    const prev = market.indexHistory && market.indexHistory.length > 1
-      ? Math.floor(num(market.indexHistory[market.indexHistory.length - 2], idx))
-      : idx;
-    const d = idx - prev;
-
-    safeText(indexEl, idx);
-    if(indexDeltaEl){
-      indexDeltaEl.textContent = d >= 0 ? `+${d}` : `${d}`;
-      indexDeltaEl.style.color = d >= 0 ? "var(--good)" : "var(--bad)";
-    }
-
-    drawLine(indexChart, market.indexHistory || [idx], { grid:true, padding:16 });
-  }
-
-  function renderMovers(){
-    const list = market.list.slice();
-    list.sort((a,b) => (b.lastDelta || 0) - (a.lastDelta || 0));
-
-    const gainers = list.slice(0, 6);
-    const losers = list.slice(-6).reverse();
-
-    if(gainersList) gainersList.innerHTML = "";
-    if(losersList) losersList.innerHTML = "";
-
-    for(const c of gainers) gainersList && gainersList.appendChild(buildMoverRow(c));
-    for(const c of losers) losersList && losersList.appendChild(buildMoverRow(c));
-  }
-
-  function buildMoverRow(c){
-    const row = document.createElement("div");
-    row.className = "watchRow";
-
-    const delta = c.lastDelta || 0;
-    row.innerHTML = `
-      <div class="watchName">${escapeHtml(shortName(c.name))}</div>
-      <div class="watchDelta ${delta>0?'good':delta<0?'bad':''}">
-        ${fmtDelta(delta)}
-      </div>
-    `;
-
-    row.addEventListener("click", () => {
-      wantedId = c.id;
-      saveJSON(LS.WANTED, wantedId);
-      renderWanted();
-
-      if(editCharSelect){
-        editCharSelect.value = c.id;
-        editCharSelect.dispatchEvent(new Event("change"));
-      }
-    });
-
-    row.addEventListener("dblclick", () => openDetailModal(c.id));
-    return row;
-  }
-
-  function shortName(s){
-    const str = String(s || "");
-    return str.length <= 16 ? str : (str.slice(0, 15) + "…");
-  }
-
-  function fmtDelta(n){
-    const v = Math.round(num(n, 0));
-    return v > 0 ? `+${v}` : `${v}`;
-  }
-
-  /***********************
-   * SIMULATION
-   ***********************/
-  function startSim(){
-    if(simTimer) return;
-    const speed = clamp(num(ui.speedMs, 500), 60, 5000);
-    simTimer = setInterval(() => tickN(1), speed);
-  }
-
-  function stopSim(){
-    if(!simTimer) return;
-    clearInterval(simTimer);
-    simTimer = null;
-  }
-
-  function tickN(n){
-    n = clamp(num(n, 1), 1, 999);
-    for(let i=0;i<n;i++){
-      marketTick();
-      updateIndex();
-      updateNetWorthHistory();
-    }
-    saveJSON(LS.MARKET, market);
-    saveJSON(LS.PORT, portfolio);
-    renderAll();
-    if(selectedId) openDetailModal(selectedId);
-  }
-
-  function marketTick(){
-    market.day = num(market.day, 0) + 1;
-
-    const r = Math.random();
-    let eventType = null;
-    if(r < 0.10) eventType = "zodiac";
-    else if(r < 0.18) eventType = "neo";
-    else if(r < 0.26) eventType = "maji";
-
-    const gVol = clamp(num(loadJSON("gb_global_vol_v10", 1), 1), 0.1, 10);
-
-    for(const c of market.list){
-      const cap = clamp(num(c.cap, 1000), 1, 1000);
-
-      if(c.frozen){
-        c.lastDelta = 0;
-        c.points = clamp(num(c.points, 300), 1, cap);
-        c.history.push(c.points);
-        if(c.history.length > MAX_HISTORY) c.history.shift();
-        c.ticks.push({ label: "Frozen", delta: 0 });
-        if(c.ticks.length > MAX_HISTORY) c.ticks.shift();
-        continue;
-      }
-
-      const volMult = clamp(num(c.volMult, 1), 0.1, 10);
-
-      const vol = (1.25 + (1000 - c.popularity) / 220) * gVol * volMult;
-      const bias = (c.potential - 500) / 180;
-
-      const noise = randFloat(-14, 14) * vol;
-      let eventPush = 0;
-      if(eventType && c.type === eventType) eventPush = randFloat(6, 18) * volMult;
-
-      const delta = clamp(Math.round(noise + bias + eventPush), -42, 42);
-
-      const old = c.points;
-      c.points = clamp(num(c.points, 300) + delta, 1, cap);
-      c.lastDelta = c.points - old;
-
-      c.history.push(c.points);
-      if(c.history.length > MAX_HISTORY) c.history.shift();
-
-      c.ticks.push({ label: eventType ? `Tick (${eventType} surge)` : "Tick", delta: c.lastDelta });
-      if(c.ticks.length > MAX_HISTORY) c.ticks.shift();
-    }
-  }
-
-  function updateIndex(){
-    const avg = market.list.reduce((s,c)=> s + c.points, 0) / Math.max(1, market.list.length);
-    market.indexHistory = market.indexHistory || [];
-    market.indexHistory.push(avg);
-    if(market.indexHistory.length > MAX_HISTORY) market.indexHistory.shift();
-  }
-
-  function updateNetWorthHistory(){
-    portfolio.netWorthHistory = portfolio.netWorthHistory || [];
-    portfolio.netWorthHistory.push(calcNetWorth());
-    if(portfolio.netWorthHistory.length > MAX_HISTORY) portfolio.netWorthHistory.shift();
-  }
-
-  function randFloat(a,b){ return Math.random()*(b-a)+a; }
-
-  /***********************
-   * TRADING
-   ***********************/
-  function buy(id, shares){
-    const c = market.byId[id];
-    if(!c) return;
-
-    shares = clamp(num(shares, 1), 1, 999);
-    const cost = c.points * shares;
-    if(portfolio.balance < cost) return;
-
-    portfolio.balance -= cost;
-
-    const pos = portfolio.positions[id] || { shares: 0, avgCost: 0 };
-    const newShares = pos.shares + shares;
-    pos.avgCost = ((pos.avgCost * pos.shares) + cost) / newShares;
-    pos.shares = newShares;
-    portfolio.positions[id] = pos;
-
-    bumpPrice(id, +Math.max(1, Math.round(shares * 3)));
-    updateIndex();
-    updateNetWorthHistory();
-  }
-
-  function sell(id, shares){
-    const c = market.byId[id];
-    if(!c) return;
-
-    shares = clamp(num(shares, 1), 1, 999);
-    const pos = portfolio.positions[id];
-    if(!pos || pos.shares < shares) return;
-
-    const revenue = c.points * shares;
-    portfolio.balance += revenue;
-
-    pos.shares -= shares;
-    if(pos.shares <= 0) delete portfolio.positions[id];
-
-    bumpPrice(id, -Math.max(1, Math.round(shares * 3)));
-    updateIndex();
-    updateNetWorthHistory();
-  }
-
-  function bumpPrice(id, amount){
-    const c = market.byId[id];
-    if(!c) return;
-
-    const cap = clamp(num(c.cap, 1000), 1, 1000);
-
-    if(c.frozen){
-      c.lastDelta = 0;
-      c.points = clamp(num(c.points, 300), 1, cap);
-      c.history.push(c.points);
-      if(c.history.length > MAX_HISTORY) c.history.shift();
-      c.ticks.push({ label: "Frozen trade", delta: 0 });
-      if(c.ticks.length > MAX_HISTORY) c.ticks.shift();
-      return;
-    }
-
-    const old = c.points;
-    c.points = clamp(num(c.points, 300) + num(amount, 0), 1, cap);
-    c.lastDelta = c.points - old;
-
-    c.history.push(c.points);
-    if(c.history.length > MAX_HISTORY) c.history.shift();
-
-    c.ticks.push({ label: amount >= 0 ? "Trade demand" : "Trade supply", delta: c.lastDelta });
-    if(c.ticks.length > MAX_HISTORY) c.ticks.shift();
-  }
-
-  /***********************
-   * MODAL
-   ***********************/
-  function openDetailModal(id){
-    const c = market.byId[id];
-    if(!c) return;
-    selectedId = id;
-
-    safeText(modalName, c.name);
-    safeText(modalMeta, `${String(c.type).toUpperCase()} • Arcs: ${c.arcs.join(", ")} • $${c.ticker}`);
-
-    if(modalImg){
-      modalImg.src = getImage(c);
-      modalImg.alt = c.name;
-    }
-    safeHref(modalLinkBtn, getLink(c));
-
-    safeText(modalPrice, Math.floor(c.points));
-    safeText(modalOwned, portfolio.positions[id]?.shares || 0);
-    safeText(modalPotential, c.potential);
-    safeText(modalPop, c.popularity);
-    safeText(modalCap, Math.floor(c.cap ?? 1000));
-    safeText(modalFrozen, c.frozen ? "FROZEN" : "LIVE");
-
-    if(modalBuyBtn) modalBuyBtn.onclick = () => buy(id, getQty());
-    if(modalSellBtn) modalSellBtn.onclick = () => sell(id, getQty());
-
-    drawLine(spark, c.history, { grid:true, padding:16 });
-    renderHistoryList(c);
-
-    if(modalBackdrop) modalBackdrop.classList.remove("hidden");
-    if(detailModal) detailModal.classList.remove("hidden");
-
-    if(editCharSelect){
-      editCharSelect.value = id;
-      editCharSelect.dispatchEvent(new Event("change"));
-    }
-  }
-
-  function closeModal(){
-    selectedId = null;
-    if(modalBackdrop) modalBackdrop.classList.add("hidden");
-    if(detailModal) detailModal.classList.add("hidden");
-  }
-
-  function renderHistoryList(c){
-    if(!historyList) return;
-    const recent = (c.ticks || []).slice(-14).reverse();
-
-    historyList.innerHTML = recent.length
-      ? ""
-      : `<div style="color:var(--muted);font-size:12px;">No ticks yet.</div>`;
-
-    for(const t of recent){
-      const d = num(t.delta, 0);
-      const row = document.createElement("div");
-      row.className = "hRow";
-      row.innerHTML = `
-        <div>${escapeHtml(t.label || "Tick")}</div>
-        <div class="watchDelta ${d>0?'good':d<0?'bad':''}">${fmtDelta(d)} PTS</div>
-      `;
-      historyList.appendChild(row);
-    }
-  }
-
-  /***********************
-   * MEDIA LOOKUP
-   ***********************/
-  function getImage(c){
-    try{
-      const o = mediaOverrides?.[c.id];
-      if(o && typeof o.image === "string" && o.image.trim()) return o.image.trim();
-
-      const m = entityMedia?.[c.id];
-      if(m && typeof m.image === "string" && m.image.trim()) return m.image.trim();
-    }catch(e){
-      showFatal("media error in getImage(): " + (e?.message || e));
-    }
-    return placeholderImg(c.name);
-  }
-
-  function getLink(c){
-    try{
-      const o = mediaOverrides?.[c.id];
-      if(o && typeof o.link === "string" && o.link.trim()) return o.link.trim();
-
-      const m = entityMedia?.[c.id];
-      if(m && typeof m.link === "string" && m.link.trim()) return m.link.trim();
-    }catch(e){
-      showFatal("media error in getLink(): " + (e?.message || e));
-    }
-    return "#";
-  }
-
-  /***********************
-   * STORAGE UTIL
-   ***********************/
-  function loadJSON(key, fallback){
-    try{
-      const raw = localStorage.getItem(key);
-      if(!raw) return fallback;
-      const parsed = JSON.parse(raw);
-      return parsed ?? fallback;
-    }catch{
-      return fallback;
-    }
-  }
-  function saveJSON(key, value){
-    try{ localStorage.setItem(key, JSON.stringify(value)); }catch{}
-  }
-  function persistUI(){
-    saveJSON(LS.UI, {
-      arc: ui.arc ?? "all",
-      type: ui.type ?? "all",
-      sort: ui.sort ?? "pop_desc",
-      search: ui.search ?? "",
-      speedMs: clamp(num(ui.speedMs, 500), 60, 5000)
-    });
-  }
-
-  /***********************
-   * MARKET INIT / VALIDATION
-   ***********************/
-  function tickerFrom(c){
-    const base = (c.id || c.name || "GBX").replace(/[^a-z0-9]/gi, "").toUpperCase();
-    return (base.slice(0, 3) || "GBX");
-  }
-
-  function seedHistory(start){
-    const arr = [start];
-    for(let i=0;i<24;i++){
-      const prev = arr[arr.length - 1];
-      arr.push(clamp(prev + Math.round(randFloat(-18, 18)), 1, 1000));
-    }
-    return arr;
-  }
-
-  function avgPoints(list){
-    return list.reduce((s,c)=> s + num(c.points, 0), 0) / Math.max(1, list.length);
-  }
-
-  function initMarket(){
-    const list = BASE_CHARACTERS.map((c) => {
-      const seed = clamp(num(c.points, 300), 1, 1000);
-      return {
-        ...c,
-        points: clamp(seed, 1, clamp(num(c.cap, 1000), 1, 1000)),
-        lastDelta: 0,
-        ticker: tickerFrom(c),
-        cap: clamp(num(c.cap, 1000), 1, 1000),
-        frozen: Boolean(c.frozen),
-        volMult: clamp(num(c.volMult, 1), 0.1, 10),
-        history: seedHistory(seed),
-        ticks: []
-      };
-    });
-
-    const byId = Object.fromEntries(list.map(c => [c.id, c]));
-    return {
-      list,
-      byId,
-      day: 0,
-      indexHistory: [avgPoints(list)]
-    };
-  }
-
-  function validateOrInitMarket(m){
-    if(!m || !Array.isArray(m.list)) return initMarket();
-
-    if(!m.byId || typeof m.byId !== "object"){
-      m.byId = Object.fromEntries(m.list.map(c => [c.id, c]));
-    }
-
-    const seen = new Set(m.list.map(c => c.id));
-    for(const base of BASE_CHARACTERS){
-      if(!seen.has(base.id)){
-        const seed = clamp(num(base.points, 300), 1, 1000);
-        const fresh = {
-          ...base,
-          points: seed,
-          lastDelta: 0,
-          ticker: tickerFrom(base),
-          cap: clamp(num(base.cap, 1000), 1, 1000),
-          frozen: Boolean(base.frozen),
-          volMult: clamp(num(base.volMult, 1), 0.1, 10),
-          history: seedHistory(seed),
-          ticks: []
-        };
-        m.list.push(fresh);
-        m.byId[fresh.id] = fresh;
-      }
-    }
-
-    m.day = clamp(num(m.day, 0), 0, 9e9);
-    m.indexHistory = Array.isArray(m.indexHistory) ? m.indexHistory.slice(-MAX_HISTORY) : [avgPoints(m.list)];
-
-    for(const c of m.list){
-      c.cap = clamp(num(c.cap, 1000), 1, 1000);
-      c.points = clamp(num(c.points, 300), 1, c.cap);
-      c.popularity = clamp(num(c.popularity, 500), 1, 1000);
-      c.potential = clamp(num(c.potential, 500), 1, 1000);
-      c.ticker = c.ticker || tickerFrom(c);
-      c.history = Array.isArray(c.history) ? c.history.slice(-MAX_HISTORY) : seedHistory(c.points);
-      c.ticks = Array.isArray(c.ticks) ? c.ticks.slice(-MAX_HISTORY) : [];
-      c.lastDelta = num(c.lastDelta, 0);
-      c.frozen = Boolean(c.frozen);
-      c.volMult = clamp(num(c.volMult, 1), 0.1, 10);
-      if(!Array.isArray(c.arcs)) c.arcs = [];
-      if(typeof c.name !== "string") c.name = String(c.name || c.id);
-      if(typeof c.type !== "string") c.type = "npc";
-      if(!Number.isFinite(c.debutOrder)) c.debutOrder = 9999;
-      m.byId[c.id] = c;
-    }
-
-    return m;
-  }
-
-  function validateOrInitPortfolio(p){
-    if(!p || typeof p !== "object"){
-      return { balance: 5000, positions: {}, netWorthHistory: [5000] };
-    }
-    p.balance = clamp(num(p.balance, 5000), 0, 9e12);
-    p.positions = (p.positions && typeof p.positions === "object") ? p.positions : {};
-    p.netWorthHistory = Array.isArray(p.netWorthHistory) ? p.netWorthHistory.slice(-MAX_HISTORY) : [p.balance];
-
-    for(const [id, pos] of Object.entries(p.positions)){
-      if(!pos || typeof pos !== "object"){ delete p.positions[id]; continue; }
-      pos.shares = clamp(num(pos.shares, 0), 0, 9e9);
-      pos.avgCost = clamp(num(pos.avgCost, 0), 0, 1000);
-      if(pos.shares <= 0) delete p.positions[id];
-    }
-    return p;
-  }
-
-  function applyAdminStateToMarket(){
-    if(!adminState || typeof adminState !== "object") return;
-    for(const [id, st] of Object.entries(adminState)){
-      const c = market.byId[id];
-      if(!c || !st || typeof st !== "object") continue;
-      if(st.cap != null) c.cap = clamp(num(st.cap, c.cap ?? 1000), 1, 1000);
-      if(st.frozen != null) c.frozen = Boolean(st.frozen);
-      if(st.volMult != null) c.volMult = clamp(num(st.volMult, c.volMult ?? 1), 0.1, 10);
-      c.points = clamp(num(c.points, 300), 1, c.cap);
-    }
-  }
-
-  /***********************
-   * CANVAS LINE CHART
-   ***********************/
-  function tryGet2D(canvas){
-    if(!canvas) return null;
-    try{ return canvas.getContext("2d"); }catch{ return null; }
-  }
-
-  function drawLine(canvas, series, opts = {}){
-    if(!canvas) return;
-    const ctx = tryGet2D(canvas);
-    if(!ctx) return;
-
-    const w = canvas.width;
-    const h = canvas.height;
-    const padding = num(opts.padding, 16);
-    const showGrid = opts.grid !== false;
-
-    ctx.clearRect(0,0,w,h);
-    ctx.fillStyle = "rgba(0,0,0,.08)";
-    ctx.fillRect(0,0,w,h);
-
-    if(!Array.isArray(series) || series.length < 2) return;
-
-    const values = series.map(v => num(v, 0));
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const span = Math.max(1e-6, max - min);
-
-    if(showGrid){
-      ctx.strokeStyle = "rgba(255,255,255,.06)";
-      ctx.lineWidth = 1;
-      for(let i=1;i<=4;i++){
-        const y = (h/5)*i;
-        ctx.beginPath();
-        ctx.moveTo(0,y);
-        ctx.lineTo(w,y);
-        ctx.stroke();
-      }
-    }
-
-    ctx.strokeStyle = "rgba(236,245,255,.92)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-
-    for(let i=0;i<values.length;i++){
-      const x = padding + (i*(w - padding*2))/(values.length - 1);
-      const y = (h - padding) - ((values[i]-min)/span)*(h - padding*2);
-      if(i===0) ctx.moveTo(x,y);
-      else ctx.lineTo(x,y);
-    }
-    ctx.stroke();
-  }
-})();
+      const priceV = clamp(num(adminSet
