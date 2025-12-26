@@ -1,0 +1,493 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>GATE//BREACH — Stock Market (SAGA-1)</title>
+
+  <!-- safety-net minimal fallback -->
+  <style>
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#061123;color:#eaf2ff}
+    .bootBanner{position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.55);backdrop-filter:blur(10px);display:none;line-height:1.35;font-size:13px}
+    .bootBanner b{color:#f3d27b}
+    .bootBanner .row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .bootBanner button{border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.25);color:#eaf2ff;padding:8px 10px;border-radius:10px;font-weight:800;cursor:pointer}
+    .bootBanner button:hover{filter:brightness(1.06)}
+    .noscript{padding:12px;margin:12px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(0,0,0,.35)}
+  </style>
+
+  <!-- MUST be EXACT: Style.CSS -->
+  <link rel="stylesheet" href="./Style.CSS" />
+</head>
+
+<body>
+  <noscript>
+    <div class="noscript">
+      <b>JavaScript is disabled.</b> This site needs JS for cards, filters, graphs, and tick simulation.
+    </div>
+  </noscript>
+
+  <header class="topbar">
+    <div class="topLeft">
+      <div class="brandPill">
+        <span class="brandDot"></span>
+        <span class="brandText">GATE//BREACH</span>
+        <span class="brandSub">Stock Market</span>
+      </div>
+
+      <div class="navPills">
+        <button class="pill" type="button" data-nav="market">Market</button>
+        <button class="pill" type="button" data-nav="projects">Projects</button>
+        <button class="pill" type="button" data-nav="edit">Edit</button>
+      </div>
+    </div>
+
+    <div class="topRight">
+      <div class="statLine">
+        <span class="statLabel">Day</span>
+        <span class="statValue" id="dayEl">0</span>
+      </div>
+      <div class="statLine">
+        <span class="statLabel">Balance</span>
+        <span class="statValue"><span id="balanceEl">0</span> PTS</span>
+      </div>
+      <div class="statLine">
+        <span class="statLabel">Net</span>
+        <span class="statValue"><span id="netWorthEl">0</span> PTS</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <aside class="leftCol">
+      <section class="panel wanted" id="wantedPanel">
+        <div class="wantedHeader">WANTED</div>
+
+        <div class="wantedPoster">
+          <div class="wantedImageWrap">
+            <img id="wantedImg" alt="" />
+          </div>
+
+          <div class="wantedName" id="wantedName">—</div>
+          <div class="wantedRole" id="wantedRole">—</div>
+
+          <div class="wantedStats">
+            <div class="wsRow"><span>Price</span><b><span id="wantedPrice">0</span> PTS</b></div>
+            <div class="wsRow"><span>Owned</span><b id="wantedOwned">0</b></div>
+            <div class="wsRow"><span>Popularity</span><b id="wantedPop">0</b></div>
+            <div class="wsRow"><span>Potential</span><b id="wantedPot">0</b></div>
+            <div class="wsRow"><span>Cap</span><b id="wantedCap">1000</b></div>
+            <div class="wsRow"><span>Status</span><b id="wantedFrozen">LIVE</b></div>
+          </div>
+
+          <div class="wantedBtns">
+            <button class="btn buy" id="wantedBuyBtn" type="button">BUY</button>
+            <button class="btn sell" id="wantedSellBtn" type="button">SELL</button>
+          </div>
+
+          <a class="btn ghost" id="wantedLinkBtn" href="#" target="_blank" rel="noopener">Open Dossier</a>
+        </div>
+      </section>
+
+      <section class="panel portfolio">
+        <div class="panelTitle">Portfolio</div>
+
+        <div class="miniKPIs">
+          <div class="kpi">
+            <div class="kpiLabel">Positions</div>
+            <div class="kpiValue" id="positionsCount">0</div>
+          </div>
+          <div class="kpi">
+            <div class="kpiLabel">Δ Net</div>
+            <div class="kpiValue" id="nwDeltaEl">+0</div>
+          </div>
+        </div>
+
+        <div class="miniChart">
+          <canvas id="netWorthChart" width="360" height="140"></canvas>
+        </div>
+
+        <div id="portfolioList" class="portfolioList"></div>
+      </section>
+    </aside>
+
+    <section class="mainCol">
+      <!-- FILTER BAR (added Qty + Multi-Buy tray) -->
+      <section class="panel filterBar" id="marketPanel">
+        <div class="filterRow">
+          <input id="searchInput" class="input search" placeholder="Search (Kaien, Leo, Virgo, Sphinx Maji...)" />
+
+          <select id="arcSelect" class="select">
+            <option value="all">All SAGA-1 Arcs</option>
+          </select>
+
+          <select id="typeSelect" class="select">
+            <option value="all">All Types</option>
+            <option value="human">Humans</option>
+            <option value="ranger">Rangers</option>
+            <option value="neo">Neo-Rangers</option>
+            <option value="zodiac">Zodiacs</option>
+            <option value="maji">Majis</option>
+            <option value="hybrid">Hybrids</option>
+            <option value="npc">NPCs</option>
+          </select>
+
+          <select id="sortSelect" class="select">
+            <option value="pop_desc">Most popular → least</option>
+            <option value="pop_asc">Least popular → most</option>
+            <option value="oldest">Oldest → newest</option>
+            <option value="newest">Newest → oldest</option>
+            <option value="potential_desc">Potential (high → low)</option>
+            <option value="potential_asc">Potential (low → high)</option>
+            <option value="price_desc">Price (high → low)</option>
+            <option value="price_asc">Price (low → high)</option>
+          </select>
+
+          <!-- ✅ Qty input (your JS already supports #qtyInput) -->
+          <div class="qtyWrap">
+            <label class="label" for="qtyInput" style="margin:0;">Qty</label>
+            <input id="qtyInput" class="input" type="number" min="1" max="999" value="1" inputmode="numeric" />
+          </div>
+
+          <div class="resultCount" id="resultCount">0 results</div>
+        </div>
+
+        <!-- ✅ Multi-buy / multi-sell tray (JS will wire this next) -->
+        <div class="bulkTray" id="bulkTray" aria-label="Bulk trading controls">
+          <div class="bulkLeft">
+            <label class="bulkToggle">
+              <input id="multiModeToggle" type="checkbox" />
+              <span>Multi-select</span>
+            </label>
+
+            <div class="bulkInfo">
+              Selected: <b id="bulkSelectedCount">0</b>
+            </div>
+
+            <div id="bulkSelectedList" class="bulkSelectedList" aria-label="Selected tickers list">
+              <!-- JS will inject chips like: $LEO, $VIR... -->
+            </div>
+          </div>
+
+          <div class="bulkRight">
+            <button id="bulkBuyBtn" class="btn buy" type="button" disabled>BUY Selected</button>
+            <button id="bulkSellBtn" class="btn sell" type="button" disabled>SELL Selected</button>
+            <button id="bulkClearBtn" class="btn ghost" type="button" disabled>Clear</button>
+          </div>
+
+          <div class="hint small" style="margin-top:6px;">
+            Tip: In multi-select mode, clicking cards selects them (JS will handle it). Qty applies to bulk actions.
+          </div>
+        </div>
+      </section>
+
+      <section class="panel board">
+        <div class="boardHead">
+          <div class="boardTitle">Market Board</div>
+          <div class="boardMeta">
+            <span>GBX Index: <b id="indexEl">0</b></span>
+            <span>Δ <b id="indexDeltaEl">+0</b></span>
+          </div>
+        </div>
+
+        <div class="boardGrid">
+          <div class="indexBox">
+            <canvas id="indexChart" width="1100" height="170"></canvas>
+          </div>
+
+          <div class="watchBox">
+            <div class="watchTitle">Top Movers</div>
+            <div class="watchCols">
+              <div>
+                <div class="watchSub">Gainers</div>
+                <div id="gainersList" class="watchList"></div>
+              </div>
+              <div>
+                <div class="watchSub">Losers</div>
+                <div id="losersList" class="watchList"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="simBox">
+            <div class="watchTitle">Tick Simulation</div>
+
+            <div class="simRow">
+              <button id="playBtn" class="btn ghost" type="button">Play</button>
+              <button id="pauseBtn" class="btn ghost" type="button">Pause</button>
+            </div>
+
+            <div class="simRow">
+              <button id="step1Btn" class="btn ghost" type="button">+1</button>
+              <button id="step10Btn" class="btn ghost" type="button">+10</button>
+            </div>
+
+            <div class="simRow">
+              <select id="speedSelect" class="select full">
+                <option value="1000">1x (1s/tick)</option>
+                <option value="500">2x (0.5s/tick)</option>
+                <option value="250">4x (0.25s/tick)</option>
+                <option value="120">8x (fast)</option>
+              </select>
+            </div>
+
+            <div class="simRow">
+              <label class="label" style="margin:0;">Global volatility</label>
+              <input id="globalVol" class="input" type="number" min="0.1" max="10" step="0.1" />
+            </div>
+
+            <div class="simNote">
+              Prices change each tick. Admin can freeze or cap stocks.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel projects" id="projectsPanel">
+        <div class="projectsHead">
+          <div class="projectsTitle">Projects</div>
+          <div class="projectsHint">Cards wrap horizontally</div>
+        </div>
+        <div id="projectsGrid" class="projectsGrid"></div>
+      </section>
+
+      <section class="panel edit" id="editPanel">
+        <div class="panelTitle">EDIT</div>
+        <div class="hint">Pick a character → paste image/link → Save.</div>
+
+        <div class="editGrid">
+          <div>
+            <label class="label">Character</label>
+            <select id="editCharSelect" class="select full"></select>
+
+            <label class="label">Image URL</label>
+            <input id="editImg" class="input" placeholder="https://...png/jpg/webp" />
+
+            <label class="label">Redirect Link</label>
+            <input id="editLink" class="input" placeholder="https://..." />
+
+            <div class="editBtns">
+              <button id="saveEditBtn" class="btn ghost full" type="button">Save</button>
+              <button id="resetEditBtn" class="btn ghost full" type="button">Reset Character</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="label">Bulk JSON (optional)</label>
+            <div class="hint small">Example: {"kaien":{"image":"...","link":"..."}}</div>
+            <textarea id="bulkJson" class="textarea" placeholder='{"kaien":{"image":"...","link":"..."}}'></textarea>
+            <button id="applyBulkBtn" class="btn ghost full" type="button">Apply Bulk JSON</button>
+          </div>
+        </div>
+
+        <!-- ✅ ADMIN PANEL (kept + expanded with market-wide admin controls) -->
+        <div class="adminWrap">
+          <div class="panelTitle" style="margin-top:14px;">ADMIN PANEL</div>
+          <div class="hint">No password. Visible controls only (no hidden backdoors).</div>
+
+          <div class="adminGrid">
+            <div class="adminCard">
+              <div class="adminTitle">Selected Character Controls</div>
+
+              <label class="label">Set Current Price (1–cap)</label>
+              <input id="adminSetPrice" class="input" type="number" min="1" max="1000" step="1" />
+
+              <label class="label">Set Max Cap (1–1000)</label>
+              <input id="adminSetCap" class="input" type="number" min="1" max="1000" step="1" />
+
+              <label class="label">Freeze / Stagnate</label>
+              <select id="adminFreeze" class="select full">
+                <option value="false">LIVE</option>
+                <option value="true">FROZEN</option>
+              </select>
+
+              <label class="label">Volatility Multiplier (per character)</label>
+              <input id="adminVolMult" class="input" type="number" min="0.1" max="10" step="0.1" />
+
+              <div class="adminBtns">
+                <button id="adminApplyBtn" class="btn ghost full" type="button">Apply Changes</button>
+                <button id="adminNukeHistoryBtn" class="btn ghost full" type="button">Clear Price History</button>
+              </div>
+            </div>
+
+            <div class="adminCard">
+              <div class="adminTitle">Add / Remove Characters</div>
+
+              <label class="label">New Character ID (unique)</label>
+              <input id="newId" class="input" placeholder="ex: soul_bread" />
+
+              <label class="label">Name</label>
+              <input id="newName" class="input" placeholder="ex: Soul Bread" />
+
+              <label class="label">Type</label>
+              <select id="newType" class="select full">
+                <option value="npc">NPC</option>
+                <option value="human">Human</option>
+                <option value="ranger">Ranger</option>
+                <option value="neo">Neo</option>
+                <option value="zodiac">Zodiac</option>
+                <option value="maji">Maji</option>
+                <option value="hybrid">Hybrid</option>
+              </select>
+
+              <label class="label">Arcs (comma numbers)</label>
+              <input id="newArcs" class="input" placeholder="0,2" />
+
+              <div class="twoCol">
+                <div>
+                  <label class="label">Popularity (1–1000)</label>
+                  <input id="newPop" class="input" type="number" min="1" max="1000" step="1" value="500" />
+                </div>
+                <div>
+                  <label class="label">Potential (1–1000)</label>
+                  <input id="newPot" class="input" type="number" min="1" max="1000" step="1" value="500" />
+                </div>
+              </div>
+
+              <label class="label">Lore Impact (starting range)</label>
+              <input id="newImpact" class="input" type="number" min="1" max="1000" step="1" value="300" />
+
+              <div class="adminBtns">
+                <button id="addCharBtn" class="btn ghost full" type="button">Add Character</button>
+
+                <label class="label">Remove Selected Character</label>
+                <button id="removeCharBtn" class="btn ghost full" type="button">Remove Selected</button>
+              </div>
+
+              <div class="hint small" style="margin-top:8px;">
+                Removing deletes their stock + your holdings for that character.
+              </div>
+            </div>
+
+            <!-- ✅ New: Market-wide admin controls (JS will wire next) -->
+            <div class="adminCard">
+              <div class="adminTitle">Market Admin (Global)</div>
+
+              <div class="twoCol">
+                <div>
+                  <label class="label">Freeze ALL Stocks</label>
+                  <button id="adminFreezeAllBtn" class="btn ghost full" type="button">Freeze All</button>
+                </div>
+                <div>
+                  <label class="label">Unfreeze ALL Stocks</label>
+                  <button id="adminUnfreezeAllBtn" class="btn ghost full" type="button">Unfreeze All</button>
+                </div>
+              </div>
+
+              <label class="label">Set Global Volatility (same as top sim input)</label>
+              <input id="adminGlobalVol" class="input" type="number" min="0.1" max="10" step="0.1" placeholder="ex: 1.5" />
+
+              <div class="adminBtns">
+                <button id="adminApplyGlobalVolBtn" class="btn ghost full" type="button">Apply Global Vol</button>
+                <button id="adminResetMarketBtn" class="btn ghost full" type="button">Reset Market (Fresh Start)</button>
+              </div>
+
+              <label class="label">Export / Import (JSON)</label>
+              <textarea id="adminTransferJson" class="textarea" placeholder="Export will appear here. Paste JSON here to import."></textarea>
+
+              <div class="twoCol">
+                <button id="adminExportBtn" class="btn ghost full" type="button">Export State</button>
+                <button id="adminImportBtn" class="btn ghost full" type="button">Import State</button>
+              </div>
+
+              <div class="hint small" style="margin-top:8px;">
+                Export/Import is for your own save files. Import should overwrite market + portfolio.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div id="modalBackdrop" class="modalBackdrop hidden"></div>
+  <div id="detailModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modalHead">
+      <div>
+        <div id="modalName" class="modalTitle">Character</div>
+        <div id="modalMeta" class="modalSub">—</div>
+      </div>
+      <button id="closeModalBtn" class="btn ghost" type="button">Close</button>
+    </div>
+
+    <div class="modalBody">
+      <div class="modalLeft">
+        <div class="bigImgWrap">
+          <img id="modalImg" class="bigImg" alt="" />
+        </div>
+
+        <div class="modalActions">
+          <button id="modalBuyBtn" class="btn buy" type="button">Buy</button>
+          <button id="modalSellBtn" class="btn sell" type="button">Sell</button>
+          <a id="modalLinkBtn" class="btn ghost" href="#" target="_blank" rel="noopener">Open Link</a>
+        </div>
+      </div>
+
+      <div class="modalRight">
+        <div class="chartCard">
+          <div class="chartTop">
+            <div class="chartTitle">Price History</div>
+            <div class="chartKpis">
+              <span>Price: <b id="modalPrice">0</b></span>
+              <span>Owned: <b id="modalOwned">0</b></span>
+              <span>Potential: <b id="modalPotential">0</b></span>
+              <span>Popularity: <b id="modalPop">0</b></span>
+              <span>Cap: <b id="modalCap">1000</b></span>
+              <span>Status: <b id="modalFrozen">LIVE</b></span>
+            </div>
+          </div>
+          <canvas id="spark" width="720" height="220"></canvas>
+        </div>
+
+        <div class="historyCard">
+          <div class="chartTitle">Recent Ticks</div>
+          <div id="historyList" class="historyList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bootBanner" class="bootBanner" role="status" aria-live="polite">
+    <div class="row">
+      <div><b>Load check:</b> <span id="bootMsg">Checking…</span></div>
+      <div><button id="bootReloadBtn" type="button">Reload</button></div>
+    </div>
+    <div style="margin-top:6px;opacity:.9">
+      If it looks plain, your file names/paths are wrong (Index.html / Style.CSS / app.js).
+    </div>
+  </div>
+
+  <script src="./app.js" defer
+    onerror="(function(){var b=document.getElementById('bootBanner');var m=document.getElementById('bootMsg');if(b&&m){b.style.display='block';m.textContent='app.js failed to load. Make sure the file is named EXACTLY app.js and is in the same folder as Index.html.';}})();">
+  </script>
+
+  <script>
+    (function(){
+      const banner = document.getElementById("bootBanner");
+      const msg = document.getElementById("bootMsg");
+      const btn = document.getElementById("bootReloadBtn");
+      if(btn) btn.addEventListener("click", ()=> location.reload());
+
+      function checkCssLoaded(){
+        try{
+          const v = getComputedStyle(document.documentElement).getPropertyValue("--cssLoaded").trim();
+          return v === "1";
+        }catch{ return false; }
+      }
+
+      window.addEventListener("load", () => {
+        setTimeout(() => {
+          const ok = checkCssLoaded();
+          if(!ok && banner && msg){
+            banner.style.display = "block";
+            msg.textContent = "Style.CSS did NOT load. Make sure the file is named EXACTLY Style.CSS and linked as ./Style.CSS.";
+          }
+        }, 50);
+      });
+    })();
+  </script>
+</body>
+</html>
