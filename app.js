@@ -6,53 +6,13 @@
   "use strict";
 
   /*****************************************************************
-   * 0) SAFETY HELPERS
+   * 0) ADMIN PASSWORD (CHANGE THIS)
    *****************************************************************/
-  const $ = (sel, root = document) => root.querySelector(sel);
-  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-  const toInt = (v, d = 0) => {
-    const n = Number.parseInt(v, 10);
-    return Number.isFinite(n) ? n : d;
-  };
-  const toNum = (v, d = 0) => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : d;
-  };
-  const fmt = (n) => Math.round(Number(n) || 0).toLocaleString();
-
-  const safeUrl = (u) => {
-    if (!u) return "";
-    try {
-      const url = new URL(String(u), location.href);
-      if (!/^https?:$/.test(url.protocol)) return "";
-      return url.href;
-    } catch {
-      return "";
-    }
-  };
+  const EDIT_PANEL_PASSWORD = "CHANGE_THIS_PASSWORD"; // <-- change it
+  const EDIT_AUTH_KEY = "gb_edit_authed_v2";
 
   /*****************************************************************
-   * 1) ADMIN PANEL PASSWORD LOCK (CHANGE THIS PASSWORD)
-   *****************************************************************/
-  const EDIT_PANEL_PASSWORD = "Raijin is a bitch"; // <-- CHANGE THIS
-  const EDIT_AUTH_KEY = "gb_edit_authed_v1";
-
-  function isEditAuthed() {
-    try {
-      return sessionStorage.getItem(EDIT_AUTH_KEY) === "1";
-    } catch {
-      return false;
-    }
-  }
-  function setEditAuthed(v) {
-    try {
-      sessionStorage.setItem(EDIT_AUTH_KEY, v ? "1" : "0");
-    } catch {}
-  }
-
-  /*****************************************************************
-   * 2) PASTE YOUR entityMedia HERE (TOP LEVEL, NOT INSIDE ANYTHING)
+   * 1) YOUR entityMedia (AS PROVIDED)
    *****************************************************************/
   const entityMedia = {
     "kaien_dazhen": { image: "https://media.discordapp.net/attachments/708562883075637278/1453717432761057424/image.png?ex=694e775c&is=694d25dc&hm=345aa7ce62acb6763cbce1d4462a9546fda04cd8714fc7a2daa9616408ba3f8d&=&format=webp&quality=lossless&width=492&height=359", link: "https://example.com/kaien" },
@@ -148,19 +108,10 @@
   };
 
   /*****************************************************************
-   * 3) CHARACTERS (YOUR LIST)
+   * 2) CHARACTERS (AS PROVIDED)
    *****************************************************************/
-  function mk(id, name, type, folders, code, floor, cap, volatility) {
-    return {
-      id: String(id),
-      name: String(name),
-      type: String(type),
-      folders: Array.isArray(folders) ? folders.slice() : [],
-      code: toInt(code, 0),
-      floor: toInt(floor, 0),
-      cap: toInt(cap, 0),
-      volatility: toInt(volatility, 0),
-    };
+  function mk(id, name, type, tags, stock, min, max, base){
+    return { id, name, type, tags: Array.isArray(tags) ? tags.slice() : [], stock, min, max, base };
   }
 
   const BASE_CHARACTERS = [
@@ -256,1121 +207,847 @@
   ];
 
   /*****************************************************************
+   * 3) HELPERS
+   *****************************************************************/
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+  const nnum = (v, fallback = 0) => {
+    const x = Number(v);
+    return Number.isFinite(x) ? x : fallback;
+  };
+  const safeUrl = (u) => {
+    if (!u) return "";
+    try {
+      const url = new URL(u, location.href);
+      if (!/^https?:$/.test(url.protocol)) return "";
+      return url.href;
+    } catch {
+      return "";
+    }
+  };
+
+  function isEditAuthed(){
+    try { return sessionStorage.getItem(EDIT_AUTH_KEY) === "1"; } catch { return false; }
+  }
+  function setEditAuthed(v){
+    try { sessionStorage.setItem(EDIT_AUTH_KEY, v ? "1" : "0"); } catch {}
+  }
+
+  /*****************************************************************
    * 4) STORAGE
    *****************************************************************/
-  const KEY_STATE = "gbx_state_v4";
-  const KEY_OVERRIDES = "gbx_overrides_v2";
-  const KEY_CUSTOM_CHARS = "gbx_custom_chars_v1";
+  const KEY_STATE = "gbx_state_v5"; // bump to avoid old broken states
 
-  const loadJSON = (k, fallback) => {
-    try {
-      const v = localStorage.getItem(k);
-      if (!v) return fallback;
-      const obj = JSON.parse(v);
-      return obj ?? fallback;
+  function loadJSON(k, fallback){
+    try{
+      const raw = localStorage.getItem(k);
+      if (!raw) return fallback;
+      return JSON.parse(raw);
     } catch {
       return fallback;
     }
-  };
-  const saveJSON = (k, v) => {
-    try {
-      localStorage.setItem(k, JSON.stringify(v));
-      return true;
-    } catch {
-      return false;
-    }
-  };
+  }
+  function saveJSON(k, v){
+    try{ localStorage.setItem(k, JSON.stringify(v)); } catch {}
+  }
 
   /*****************************************************************
-   * 5) APP STATE
+   * 5) GAME STATE
    *****************************************************************/
-  const PORT_KEYS = ["J", "M", "B", "K", "R"];
+  const FOLDERS = ["J","M","B","K","R"];
+  const DEFAULT_POINTS = 5000;
 
-  function defaultState() {
-    const portfolios = {};
-    for (const p of PORT_KEYS) {
-      portfolios[p] = { points: 5000, holdings: {} };
-    }
+  function defaultStockForChar(ch){
+    const base = nnum(ch.base, 100);
+    const min = nnum(ch.min, Math.max(1, base * 0.7));
+    const max = nnum(ch.max, base * 1.3);
+    const init = clamp(base, min, max);
     return {
-      activePortfolio: "J",
-      portfolios,
-      prices: {},       // current prices by id
-      lastDelta: {},    // last tick delta by id
-      globalStagnant: false, // stagnate ALL stocks
-      tickMs: 2500,
+      id: ch.id,
+      price: init,
+      volatility: 1.0,      // 0 = no movement
+      capMax: max * 2,      // absolute max this stock can reach
+      stagnated: false
     };
   }
 
-  let state = (() => {
+  const DEFAULT_STATE = {
+    version: 5,
+    ui: { tab: "Market", folder: "J", selectedId: BASE_CHARACTERS[0]?.id || "" },
+    folders: Object.fromEntries(FOLDERS.map(f => [f, { points: DEFAULT_POINTS }])),
+    stocks: Object.fromEntries(BASE_CHARACTERS.map(ch => [ch.id, defaultStockForChar(ch)])),
+  };
+
+  const state = (() => {
     const s = loadJSON(KEY_STATE, null);
-    if (!s || typeof s !== "object") return defaultState();
-    const base = defaultState();
-    // merge safely
-    base.activePortfolio = PORT_KEYS.includes(s.activePortfolio) ? s.activePortfolio : base.activePortfolio;
-    base.globalStagnant = !!s.globalStagnant;
-    base.tickMs = toInt(s.tickMs, base.tickMs);
-    base.prices = (s.prices && typeof s.prices === "object") ? s.prices : {};
-    base.lastDelta = (s.lastDelta && typeof s.lastDelta === "object") ? s.lastDelta : {};
-    base.portfolios = base.portfolios;
-    if (s.portfolios && typeof s.portfolios === "object") {
-      for (const p of PORT_KEYS) {
-        if (s.portfolios[p]) {
-          base.portfolios[p].points = toInt(s.portfolios[p].points, base.portfolios[p].points);
-          base.portfolios[p].holdings = (s.portfolios[p].holdings && typeof s.portfolios[p].holdings === "object")
-            ? s.portfolios[p].holdings
-            : {};
-        }
+    if (!s || typeof s !== "object") return structuredClone(DEFAULT_STATE);
+
+    // soft-migrate: ensure everyone exists
+    const merged = structuredClone(DEFAULT_STATE);
+
+    // keep UI if present
+    if (s.ui && typeof s.ui === "object") {
+      merged.ui.tab = typeof s.ui.tab === "string" ? s.ui.tab : merged.ui.tab;
+      merged.ui.folder = typeof s.ui.folder === "string" ? s.ui.folder : merged.ui.folder;
+      merged.ui.selectedId = typeof s.ui.selectedId === "string" ? s.ui.selectedId : merged.ui.selectedId;
+    }
+
+    // folders
+    if (s.folders && typeof s.folders === "object") {
+      for (const f of FOLDERS) {
+        const pts = nnum(s.folders?.[f]?.points, merged.folders[f].points);
+        merged.folders[f].points = pts;
       }
     }
-    return base;
+
+    // stocks: take saved, but ensure all characters exist
+    if (s.stocks && typeof s.stocks === "object") {
+      for (const ch of BASE_CHARACTERS) {
+        const def = merged.stocks[ch.id];
+        const old = s.stocks[ch.id];
+        if (old && typeof old === "object") {
+          def.price = clamp(nnum(old.price, def.price), 0, 1e12);
+          def.volatility = clamp(nnum(old.volatility, def.volatility), 0, 1000);
+          def.capMax = Math.max(0, nnum(old.capMax, def.capMax));
+          def.stagnated = !!old.stagnated;
+        }
+        // also ensure capMax at least current price
+        def.capMax = Math.max(def.capMax, def.price);
+        merged.stocks[ch.id] = def;
+      }
+    }
+
+    return merged;
   })();
 
-  let overrides = loadJSON(KEY_OVERRIDES, {});
-  if (!overrides || typeof overrides !== "object") overrides = {};
-
-  let customChars = loadJSON(KEY_CUSTOM_CHARS, {});
-  if (!customChars || typeof customChars !== "object") customChars = {};
-
-  const persistState = () => saveJSON(KEY_STATE, state);
-  const persistOverrides = () => saveJSON(KEY_OVERRIDES, overrides);
-  const persistCustom = () => saveJSON(KEY_CUSTOM_CHARS, customChars);
-
-  /*****************************************************************
-   * 6) DATA: BUILD ACTIVE CHARACTER LIST
-   *****************************************************************/
-  function normalizeChar(obj) {
-    // accepts mk-like objects or stored custom objects
-    const id = String(obj?.id ?? "").trim();
-    if (!id) return null;
-    const name = String(obj?.name ?? id);
-    const type = String(obj?.type ?? "unknown");
-    const folders = Array.isArray(obj?.folders) ? obj.folders.map((x) => toInt(x, 0)) : [];
-    const code = toInt(obj?.code, 0);
-    let floor = toInt(obj?.floor, 0);
-    let cap = toInt(obj?.cap, 0);
-    let volatility = toInt(obj?.volatility, 0);
-    if (cap < floor) cap = floor;
-    if (volatility < 0) volatility = 0;
-    return { id, name, type, folders, code, floor, cap, volatility };
-  }
-
-  function getAllCharacters() {
-    const map = new Map();
-
-    // base
-    for (const c of BASE_CHARACTERS) {
-      const nc = normalizeChar(c);
-      if (nc) map.set(nc.id, nc);
-    }
-
-    // custom (stored)
-    for (const k of Object.keys(customChars)) {
-      const nc = normalizeChar(customChars[k]);
-      if (nc) map.set(nc.id, nc);
-    }
-
-    // apply overrides
-    const out = [];
-    for (const c of map.values()) {
-      const o = overrides[c.id];
-      const merged = { ...c };
-      if (o && typeof o === "object") {
-        if (Number.isFinite(+o.floor)) merged.floor = toInt(o.floor, merged.floor);
-        if (Number.isFinite(+o.cap)) merged.cap = toInt(o.cap, merged.cap);
-        if (Number.isFinite(+o.volatility)) merged.volatility = toInt(o.volatility, merged.volatility);
-        if (merged.cap < merged.floor) merged.cap = merged.floor;
-        if (merged.volatility < 0) merged.volatility = 0;
-        merged.stagnant = !!o.stagnant;
-      } else {
-        merged.stagnant = false;
-      }
-      // ensure price exists
-      if (!Number.isFinite(+state.prices[merged.id])) {
-        state.prices[merged.id] = clamp(Math.round((merged.floor + merged.cap) / 2), merged.floor, merged.cap);
-      } else {
-        state.prices[merged.id] = clamp(toInt(state.prices[merged.id], merged.floor), merged.floor, merged.cap);
-      }
-      out.push(merged);
-    }
-
-    // cleanup prices/holdings for removed chars (safe)
-    const ids = new Set(out.map((x) => x.id));
-    for (const pid of Object.keys(state.prices)) {
-      if (!ids.has(pid)) delete state.prices[pid];
-    }
-    for (const p of PORT_KEYS) {
-      const h = state.portfolios[p].holdings || {};
-      for (const hid of Object.keys(h)) {
-        if (!ids.has(hid)) delete h[hid];
-        else h[hid] = Math.max(0, toInt(h[hid], 0));
-      }
-      state.portfolios[p].holdings = h;
-    }
-
-    persistState();
-    return out.sort((a, b) => a.name.localeCompare(b.name));
+  function persist(){
+    saveJSON(KEY_STATE, state);
   }
 
   /*****************************************************************
-   * 7) UI: BUILD EVERYTHING (NO HTML CHANGES REQUIRED)
+   * 6) UI INJECTION (so it won't depend on your HTML)
    *****************************************************************/
-  const APP_ID = "gbxApp_v1";
-
-  function ensureStyles() {
-    if ($("#gbxStyles")) return;
+  function injectStyles(){
+    const css = `
+      :root { color-scheme: dark; }
+      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+      #gb-app { padding: 14px; max-width: 1200px; margin: 0 auto; }
+      .gb-top { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+      .gb-title { font-weight: 800; letter-spacing: .5px; font-size: 18px; }
+      .gb-tabs { display:flex; gap:8px; flex-wrap:wrap; }
+      .gb-tab { border:1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.06); color: #fff; padding: 8px 10px; border-radius: 10px; cursor:pointer; user-select:none; }
+      .gb-tab[aria-current="true"] { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.30); }
+      .gb-panel { margin-top: 12px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); border-radius: 14px; padding: 12px; }
+      .gb-row { display:flex; gap:12px; flex-wrap:wrap; }
+      .gb-card { width: 260px; border:1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.25); border-radius: 14px; overflow:hidden; }
+      .gb-card img { width:100%; height:160px; object-fit:cover; display:block; background: rgba(255,255,255,.06); }
+      .gb-card .pad { padding: 10px; }
+      .gb-card h3 { margin: 0 0 6px; font-size: 14px; }
+      .gb-meta { opacity:.85; font-size: 12px; }
+      .gb-price { margin-top: 8px; display:flex; justify-content:space-between; font-weight:700; }
+      .gb-btn { border:1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.08); color:#fff; padding:8px 10px; border-radius: 10px; cursor:pointer; }
+      .gb-btn:active { transform: translateY(1px); }
+      .gb-grid { display:flex; flex-wrap:wrap; gap: 12px; }
+      .gb-kv { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+      .gb-kv b { font-weight:800; }
+      .gb-select, .gb-input { border:1px solid rgba(255,255,255,.16); background: rgba(0,0,0,.35); color:#fff; padding: 8px 10px; border-radius: 10px; }
+      .gb-modal-back { position:fixed; inset:0; background: rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding: 16px; z-index: 9999; }
+      .gb-modal { width:min(520px, 100%); border:1px solid rgba(255,255,255,.18); background: rgba(15,15,18,.95); border-radius: 14px; padding: 12px; }
+      .gb-modal h2 { margin: 0 0 8px; font-size: 16px; }
+      .gb-modal p { margin: 0 0 10px; opacity:.9; }
+      .gb-divider { height:1px; background: rgba(255,255,255,.10); margin: 10px 0; }
+      .gb-small { font-size: 12px; opacity:.85; }
+      a.gb-link { color: inherit; text-decoration: none; }
+      a.gb-link:hover { text-decoration: underline; }
+    `;
     const style = document.createElement("style");
-    style.id = "gbxStyles";
-    style.textContent = `
-#${APP_ID}{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:1100px;margin:16px auto;padding:14px;}
-#${APP_ID} .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:10px;}
-#${APP_ID} .brand{font-weight:800;letter-spacing:.5px}
-#${APP_ID} .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;}
-#${APP_ID} .tabbtn{border:1px solid rgba(0,0,0,.2);background:rgba(0,0,0,.03);padding:8px 10px;border-radius:12px;cursor:pointer}
-#${APP_ID} .tabbtn[aria-selected="true"]{background:rgba(0,0,0,.10);font-weight:700}
-#${APP_ID} .panel{display:none}
-#${APP_ID} .panel.active{display:block}
-#${APP_ID} .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-#${APP_ID} .card{border:1px solid rgba(0,0,0,.18);border-radius:16px;padding:12px;background:#fff}
-#${APP_ID} .muted{opacity:.75}
-#${APP_ID} input, #${APP_ID} select, #${APP_ID} button{font:inherit}
-#${APP_ID} input, #${APP_ID} select{border:1px solid rgba(0,0,0,.2);border-radius:12px;padding:8px 10px}
-#${APP_ID} button{border:1px solid rgba(0,0,0,.2);border-radius:12px;padding:8px 10px;background:rgba(0,0,0,.05);cursor:pointer}
-#${APP_ID} button:hover{filter:brightness(.98)}
-#${APP_ID} .pill{display:inline-flex;gap:6px;align-items:center;border:1px solid rgba(0,0,0,.15);border-radius:999px;padding:6px 10px;background:rgba(0,0,0,.03)}
-#${APP_ID} .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-@media (max-width: 900px){#${APP_ID} .grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
-@media (max-width: 620px){#${APP_ID} .grid{grid-template-columns:1fr;}}
-#${APP_ID} .stockRow{display:grid;grid-template-columns:48px 1.2fr .7fr .7fr 1fr;gap:10px;align-items:center;padding:10px;border-bottom:1px solid rgba(0,0,0,.08)}
-#${APP_ID} .stockRow:last-child{border-bottom:none}
-#${APP_ID} .avatar{width:46px;height:46px;border-radius:14px;object-fit:cover;background:rgba(0,0,0,.06)}
-#${APP_ID} .deltaUp{font-weight:800}
-#${APP_ID} .deltaDown{font-weight:800}
-#${APP_ID} .right{justify-self:end}
-#${APP_ID} .mini{font-size:12px}
-#${APP_ID} .danger{border-color:rgba(220,0,0,.45)}
-#${APP_ID} .ok{border-color:rgba(0,140,0,.35)}
-`;
+    style.textContent = css;
     document.head.appendChild(style);
   }
 
-  function ensureRoot() {
-    ensureStyles();
-    let root = document.getElementById(APP_ID);
-    if (root) return root;
-
-    // try to mount inside an existing container if present
-    root = document.createElement("div");
-    root.id = APP_ID;
-
-    const host = document.querySelector("#app, main, body");
-    host.appendChild(root);
+  function ensureRoot(){
+    let root = document.getElementById("gb-app");
+    if (!root) {
+      root = document.createElement("div");
+      root.id = "gb-app";
+      document.body.appendChild(root);
+    }
     return root;
   }
 
-  function mediaFor(id) {
-    const m = entityMedia && entityMedia[id] ? entityMedia[id] : null;
-    return {
-      image: safeUrl(m?.image || ""),
-      link: safeUrl(m?.link || "")
-    };
-  }
+  /*****************************************************************
+   * 7) STOCK ENGINE
+   *****************************************************************/
+  function tickStocks(){
+    // simple random walk with volatility; stagnated means frozen
+    for (const ch of BASE_CHARACTERS) {
+      const st = state.stocks[ch.id];
+      if (!st) continue;
 
-  function setActiveTab(tab) {
-    $$(".panel", ui.root).forEach((p) => p.classList.toggle("active", p.dataset.tab === tab));
-    $$(".tabbtn", ui.root).forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === tab ? "true" : "false"));
-    if (tab === "admin") {
-      renderAdmin(); // re-check auth each time
+      if (st.stagnated || st.volatility <= 0) continue;
+
+      const v = nnum(st.volatility, 1);
+      // movement scale: based on current price but gentle
+      const scale = Math.max(1, st.price * 0.006) * v;
+      const delta = (Math.random() - 0.5) * 2 * scale;
+
+      let next = st.price + delta;
+      next = Math.max(0, next);
+      next = Math.min(next, st.capMax);
+      st.price = next;
     }
   }
 
-  const ui = {
-    root: null,
-    panels: {},
-    stockRows: new Map(), // id -> row elements
-  };
+  /*****************************************************************
+   * 8) RENDERING
+   *****************************************************************/
+  let root, modalBack;
 
-  function buildUI() {
-    const root = ensureRoot();
-    ui.root = root;
+  function setTab(name){
+    state.ui.tab = name;
+    persist();
+    render();
+  }
 
-    root.innerHTML = `
-      <div class="topbar">
-        <div class="brand">GATE//BREACH — Exchange</div>
-        <div class="row">
-          <span class="pill" id="gbxPortPill"></span>
-          <span class="pill" id="gbxPointsPill"></span>
-          <button id="gbxSaveBtn" title="Save">Save</button>
-        </div>
-      </div>
+  function setFolder(letter){
+    if (!FOLDERS.includes(letter)) return;
+    state.ui.folder = letter;
+    persist();
+    render();
+  }
 
-      <div class="tabs">
-        <button class="tabbtn" data-tab="market" aria-selected="true">Market</button>
-        <button class="tabbtn" data-tab="portfolio" aria-selected="false">Portfolios</button>
-        <button class="tabbtn" data-tab="characters" aria-selected="false">Characters</button>
-        <button class="tabbtn" data-tab="admin" aria-selected="false">Admin</button>
-      </div>
+  function setSelected(id){
+    state.ui.selectedId = id;
+    persist();
+    render();
+  }
 
-      <div class="panel active" data-tab="market">
-        <div class="card" style="margin-bottom:10px">
-          <div class="row" style="justify-content:space-between">
-            <div class="row">
-              <span class="pill">Active Portfolio:
-                <select id="gbxActivePort"></select>
-              </span>
-              <span class="pill">Search:
-                <input id="gbxSearch" type="text" placeholder="name / id / type" />
-              </span>
-              <span class="pill">Market:
-                <button id="gbxToggleGlobalFreeze"></button>
-              </span>
-            </div>
-            <div class="muted mini">Buy/Sell uses the current price.</div>
-          </div>
-        </div>
+  function money(n){
+    const x = Math.round(nnum(n, 0));
+    return x.toLocaleString("en-US");
+  }
 
-        <div class="card" id="gbxMarketList"></div>
-      </div>
+  function getPoints(folder){
+    return nnum(state.folders?.[folder]?.points, DEFAULT_POINTS);
+  }
 
-      <div class="panel" data-tab="portfolio">
-        <div class="card" style="margin-bottom:10px">
-          <div class="row" style="justify-content:space-between">
-            <div class="row">
-              <span class="pill">Portfolio:
-                <select id="gbxPortSelect"></select>
-              </span>
-              <button id="gbxPortSetActive">Set Active</button>
-            </div>
-            <div class="row">
-              <span class="pill" id="gbxPortPoints"></span>
-              <button id="gbxSellAll">Sell ALL Holdings</button>
-            </div>
-          </div>
-        </div>
-        <div class="card" id="gbxHoldings"></div>
-      </div>
+  function addPoints(folder, amt){
+    const a = nnum(amt, 0);
+    state.folders[folder].points = nnum(state.folders[folder].points, DEFAULT_POINTS) + a;
+    persist();
+    render();
+  }
 
-      <div class="panel" data-tab="characters">
-        <div class="card" style="margin-bottom:10px">
-          <div class="row" style="justify-content:space-between">
-            <div class="row">
-              <span class="pill">Search:
-                <input id="gbxCharSearch" type="text" placeholder="name / id / type" />
-              </span>
-            </div>
-            <div class="muted mini">Click an image/name to open the link (if you set one).</div>
-          </div>
-        </div>
-        <div class="grid" id="gbxCharGrid"></div>
-      </div>
+  function setPoints(folder, value){
+    state.folders[folder].points = Math.max(0, nnum(value, 0));
+    persist();
+    render();
+  }
 
-      <div class="panel" data-tab="admin">
-        <div id="gbxAdminWrap"></div>
-      </div>
-    `;
+  function openModal(node){
+    modalBack.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "gb-modal";
+    wrap.appendChild(node);
+    modalBack.appendChild(wrap);
+    modalBack.style.display = "flex";
+  }
 
-    // wire tabs
-    $$(".tabbtn", root).forEach((b) => {
-      b.addEventListener("click", () => setActiveTab(b.dataset.tab));
-    });
+  function closeModal(){
+    modalBack.style.display = "none";
+    modalBack.innerHTML = "";
+  }
 
-    $("#gbxSaveBtn", root).addEventListener("click", () => {
-      persistState();
-      persistOverrides();
-      persistCustom();
-      flashPill("Saved.");
-    });
+  function requireAdminThen(cb){
+    if (isEditAuthed()) { cb(); return; }
 
-    // portfolio select dropdowns
-    const activeSel = $("#gbxActivePort", root);
-    const portSel = $("#gbxPortSelect", root);
-    for (const p of PORT_KEYS) {
-      const o1 = document.createElement("option");
-      o1.value = p; o1.textContent = p;
-      activeSel.appendChild(o1);
+    const box = document.createElement("div");
+    const h = document.createElement("h2");
+    h.textContent = "Admin Lock";
+    const p = document.createElement("p");
+    p.textContent = "Enter the admin password to open the Edit Panel.";
+    const row = document.createElement("div");
+    row.className = "gb-kv";
 
-      const o2 = document.createElement("option");
-      o2.value = p; o2.textContent = p;
-      portSel.appendChild(o2);
-    }
-    activeSel.value = state.activePortfolio;
-    portSel.value = state.activePortfolio;
+    const input = document.createElement("input");
+    input.className = "gb-input";
+    input.type = "password";
+    input.placeholder = "Password";
+    input.autocomplete = "current-password";
 
-    activeSel.addEventListener("change", () => {
-      state.activePortfolio = activeSel.value;
-      persistState();
-      renderHeader();
-      renderHoldings();
-      renderMarket(); // updates points shown
-    });
+    const ok = document.createElement("button");
+    ok.className = "gb-btn";
+    ok.textContent = "Unlock";
 
-    $("#gbxPortSetActive", root).addEventListener("click", () => {
-      state.activePortfolio = portSel.value;
-      $("#gbxActivePort", root).value = state.activePortfolio;
-      persistState();
-      renderHeader();
-      renderHoldings();
-      renderMarket();
-      flashPill(`Active portfolio: ${state.activePortfolio}`);
-    });
+    const cancel = document.createElement("button");
+    cancel.className = "gb-btn";
+    cancel.textContent = "Cancel";
 
-    $("#gbxSellAll", root).addEventListener("click", () => {
-      const chars = getAllCharacters();
-      const port = state.portfolios[state.activePortfolio];
-      const holdings = port.holdings || {};
-      for (const id of Object.keys(holdings)) {
-        const qty = toInt(holdings[id], 0);
-        if (qty <= 0) continue;
-        const price = toInt(state.prices[id], 0);
-        port.points += qty * price;
-        holdings[id] = 0;
+    const msg = document.createElement("div");
+    msg.className = "gb-small";
+    msg.style.marginTop = "8px";
+
+    function doUnlock(){
+      const val = String(input.value || "");
+      if (val === EDIT_PANEL_PASSWORD) {
+        setEditAuthed(true);
+        closeModal();
+        cb();
+      } else {
+        msg.textContent = "Wrong password.";
       }
-      port.holdings = holdings;
-      persistState();
-      renderHeader();
-      renderHoldings();
-      renderMarket(chars);
-      flashPill("Sold all holdings.");
+    }
+
+    ok.addEventListener("click", doUnlock);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") doUnlock();
+      if (e.key === "Escape") closeModal();
     });
+    cancel.addEventListener("click", closeModal);
 
-    $("#gbxSearch", root).addEventListener("input", () => renderMarket());
-    $("#gbxCharSearch", root).addEventListener("input", () => renderCharacters());
+    row.appendChild(input);
+    row.appendChild(ok);
+    row.appendChild(cancel);
 
-    $("#gbxToggleGlobalFreeze", root).addEventListener("click", () => {
-      state.globalStagnant = !state.globalStagnant;
-      persistState();
-      renderHeader();
-      renderMarket();
-      renderAdmin(); // keep in sync
-    });
+    box.appendChild(h);
+    box.appendChild(p);
+    box.appendChild(row);
+    box.appendChild(msg);
 
-    renderHeader();
-    renderMarket();
-    renderHoldings();
-    renderCharacters();
-    renderAdmin();
+    openModal(box);
+    input.focus();
   }
 
-  function flashPill(msg) {
-    const el = $("#gbxPointsPill", ui.root);
-    const old = el.textContent;
-    el.textContent = msg;
-    setTimeout(() => renderHeader(), 900);
-  }
+  function renderMarket(){
+    const panel = document.createElement("div");
+    panel.className = "gb-panel";
 
-  function renderHeader() {
-    const p = state.activePortfolio;
-    const port = state.portfolios[p];
-    $("#gbxPortPill", ui.root).textContent = `Portfolio: ${p}`;
-    $("#gbxPointsPill", ui.root).textContent = `Points: ${fmt(port?.points ?? 0)}`;
-    $("#gbxToggleGlobalFreeze", ui.root).textContent = state.globalStagnant ? "UNFREEZE Market" : "FREEZE Market";
-    $("#gbxToggleGlobalFreeze", ui.root).classList.toggle("danger", state.globalStagnant);
-    $("#gbxToggleGlobalFreeze", ui.root).classList.toggle("ok", !state.globalStagnant);
-    $("#gbxPortPoints", ui.root).textContent = `Points: ${fmt(state.portfolios[$("#gbxPortSelect", ui.root).value]?.points ?? 0)}`;
-  }
+    const folderRow = document.createElement("div");
+    folderRow.className = "gb-row";
 
-  /*****************************************************************
-   * 8) MARKET UI (BUY/SELL + LIVE PRICES)
-   *****************************************************************/
-  function getDeltaClass(delta) {
-    if (delta > 0) return "deltaUp";
-    if (delta < 0) return "deltaDown";
-    return "";
-  }
-  function deltaText(delta) {
-    if (!delta) return "0";
-    return (delta > 0 ? "+" : "") + fmt(delta);
-  }
+    const left = document.createElement("div");
+    left.className = "gb-kv";
 
-  function renderMarket(providedChars) {
-    const chars = providedChars || getAllCharacters();
-    const q = ($("#gbxSearch", ui.root)?.value || "").trim().toLowerCase();
-    const list = q
-      ? chars.filter((c) =>
-          c.id.toLowerCase().includes(q) ||
-          c.name.toLowerCase().includes(q) ||
-          c.type.toLowerCase().includes(q)
-        )
-      : chars;
+    const folderLabel = document.createElement("div");
+    folderLabel.innerHTML = `<b>Folder:</b>`;
 
-    const host = $("#gbxMarketList", ui.root);
-    ui.stockRows.clear();
-
-    host.innerHTML = `
-      <div class="stockRow muted mini" style="font-weight:700">
-        <div></div>
-        <div>Stock</div>
-        <div>Price / Δ</div>
-        <div>Floor / Cap</div>
-        <div class="right">Trade</div>
-      </div>
-      <div id="gbxRows"></div>
-    `;
-
-    const rows = $("#gbxRows", host);
-    for (const c of list) {
-      const m = mediaFor(c.id);
-      const price = toInt(state.prices[c.id], clamp(Math.round((c.floor + c.cap) / 2), c.floor, c.cap));
-      const delta = toInt(state.lastDelta[c.id], 0);
-
-      const row = document.createElement("div");
-      row.className = "stockRow";
-      row.dataset.id = c.id;
-
-      row.innerHTML = `
-        <div>
-          ${
-            m.image
-              ? `<img class="avatar" src="${m.image}" alt="${c.name}">`
-              : `<div class="avatar" title="${c.id}" style="display:flex;align-items:center;justify-content:center;font-weight:800">${c.name.slice(0,1).toUpperCase()}</div>`
-          }
-        </div>
-
-        <div>
-          <div style="font-weight:800;line-height:1.1">
-            ${m.link ? `<a href="${m.link}" target="_blank" rel="noopener">${c.name}</a>` : c.name}
-            ${c.stagnant ? `<span class="pill mini danger" style="margin-left:6px">STAGNANT</span>` : ``}
-          </div>
-          <div class="muted mini">${c.id} • ${c.type}</div>
-        </div>
-
-        <div>
-          <div style="font-weight:900">${fmt(price)}</div>
-          <div class="${getDeltaClass(delta)} mini">${deltaText(delta)}</div>
-        </div>
-
-        <div class="mini">
-          <div>Floor: ${fmt(c.floor)}</div>
-          <div>Cap: ${fmt(c.cap)}</div>
-        </div>
-
-        <div class="right">
-          <div class="row" style="justify-content:flex-end">
-            <input type="number" min="1" step="1" value="1" style="width:88px" class="qty">
-            <button class="buy">Buy</button>
-            <button class="sell">Sell</button>
-          </div>
-          <div class="muted mini" style="text-align:right;margin-top:4px">Hold: <span class="hold">0</span></div>
-        </div>
-      `;
-
-      rows.appendChild(row);
-
-      const qtyEl = $(".qty", row);
-      const buyBtn = $(".buy", row);
-      const sellBtn = $(".sell", row);
-      const holdEl = $(".hold", row);
-
-      const refreshHold = () => {
-        const port = state.portfolios[state.activePortfolio];
-        const qty = toInt(port?.holdings?.[c.id], 0);
-        holdEl.textContent = fmt(qty);
-      };
-      refreshHold();
-
-      buyBtn.addEventListener("click", () => {
-        const qty = Math.max(1, toInt(qtyEl.value, 1));
-        doBuy(c.id, qty);
-      });
-      sellBtn.addEventListener("click", () => {
-        const qty = Math.max(1, toInt(qtyEl.value, 1));
-        doSell(c.id, qty);
-      });
-
-      ui.stockRows.set(c.id, { row, refreshHold });
+    const folderSelect = document.createElement("select");
+    folderSelect.className = "gb-select";
+    for (const f of FOLDERS) {
+      const opt = document.createElement("option");
+      opt.value = f;
+      opt.textContent = f;
+      if (f === state.ui.folder) opt.selected = true;
+      folderSelect.appendChild(opt);
     }
+    folderSelect.addEventListener("change", () => setFolder(folderSelect.value));
 
-    renderHeader();
-    // update holdings numbers after render
-    for (const v of ui.stockRows.values()) v.refreshHold();
-  }
+    const points = document.createElement("div");
+    points.className = "gb-kv";
+    points.innerHTML = `<b>Points:</b> ${money(getPoints(state.ui.folder))}`;
 
-  function doBuy(id, qty) {
-    const port = state.portfolios[state.activePortfolio];
-    const price = toInt(state.prices[id], 0);
-    const cost = qty * price;
-    if (cost <= 0) return;
-    if ((port.points || 0) < cost) {
-      flashPill("Not enough points.");
-      return;
+    left.appendChild(folderLabel);
+    left.appendChild(folderSelect);
+    left.appendChild(points);
+
+    const right = document.createElement("div");
+    right.className = "gb-kv";
+
+    const sel = document.createElement("select");
+    sel.className = "gb-select";
+    for (const ch of BASE_CHARACTERS) {
+      const opt = document.createElement("option");
+      opt.value = ch.id;
+      opt.textContent = `${ch.name} (${ch.id})`;
+      if (ch.id === state.ui.selectedId) opt.selected = true;
+      sel.appendChild(opt);
     }
-    port.points -= cost;
-    port.holdings[id] = toInt(port.holdings[id], 0) + qty;
-    persistState();
-    renderHeader();
-    renderHoldings();
-    if (ui.stockRows.get(id)) ui.stockRows.get(id).refreshHold();
-  }
+    sel.addEventListener("change", () => setSelected(sel.value));
 
-  function doSell(id, qty) {
-    const port = state.portfolios[state.activePortfolio];
-    const have = toInt(port.holdings[id], 0);
-    if (have <= 0) return;
-    const sellQty = Math.min(have, qty);
-    const price = toInt(state.prices[id], 0);
-    const gain = sellQty * price;
-    port.points += gain;
-    port.holdings[id] = have - sellQty;
-    persistState();
-    renderHeader();
-    renderHoldings();
-    if (ui.stockRows.get(id)) ui.stockRows.get(id).refreshHold();
-  }
+    const st = state.stocks[state.ui.selectedId];
+    const stInfo = document.createElement("div");
+    stInfo.className = "gb-small";
+    stInfo.innerHTML = st
+      ? `Price: <b>${money(st.price)}</b> • Vol: <b>${st.volatility}</b> • Cap: <b>${money(st.capMax)}</b> • Stagnated: <b>${st.stagnated ? "YES" : "NO"}</b>`
+      : "No stock selected.";
 
-  /*****************************************************************
-   * 9) PORTFOLIO UI
-   *****************************************************************/
-  function renderHoldings() {
-    const chars = getAllCharacters();
-    const byId = new Map(chars.map((c) => [c.id, c]));
-    const pKey = $("#gbxPortSelect", ui.root).value || state.activePortfolio;
-    $("#gbxPortPoints", ui.root).textContent = `Points: ${fmt(state.portfolios[pKey]?.points ?? 0)}`;
+    right.appendChild(document.createTextNode("Selected: "));
+    right.appendChild(sel);
+    right.appendChild(stInfo);
 
-    const port = state.portfolios[pKey];
-    const holdings = port?.holdings || {};
-    const rows = [];
+    folderRow.appendChild(left);
+    folderRow.appendChild(right);
 
-    for (const id of Object.keys(holdings)) {
-      const qty = toInt(holdings[id], 0);
-      if (qty <= 0) continue;
-      const c = byId.get(id);
-      const price = toInt(state.prices[id], 0);
-      rows.push({
-        id,
-        name: c?.name || id,
-        qty,
-        price,
-        value: qty * price
-      });
-    }
+    const grid = document.createElement("div");
+    grid.className = "gb-grid";
+    grid.style.marginTop = "12px";
 
-    rows.sort((a, b) => b.value - a.value);
+    for (const ch of BASE_CHARACTERS) {
+      const st = state.stocks[ch.id];
+      const media = entityMedia[ch.id] || {};
+      const imgUrl = safeUrl(media.image);
+      const linkUrl = safeUrl(media.link);
 
-    const host = $("#gbxHoldings", ui.root);
-    if (rows.length === 0) {
-      host.innerHTML = `<div class="muted">No holdings in this portfolio.</div>`;
-      return;
-    }
-
-    host.innerHTML = `
-      <div class="stockRow muted mini" style="font-weight:700">
-        <div></div>
-        <div>Holding</div>
-        <div>Qty</div>
-        <div>Price</div>
-        <div class="right">Value</div>
-      </div>
-      <div id="gbxHoldRows"></div>
-    `;
-
-    const wrap = $("#gbxHoldRows", host);
-    for (const r of rows) {
-      const c = byId.get(r.id);
-      const m = mediaFor(r.id);
-
-      const row = document.createElement("div");
-      row.className = "stockRow";
-      row.innerHTML = `
-        <div>
-          ${
-            m.image
-              ? `<img class="avatar" src="${m.image}" alt="${r.name}">`
-              : `<div class="avatar" style="display:flex;align-items:center;justify-content:center;font-weight:800">${r.name.slice(0,1).toUpperCase()}</div>`
-          }
-        </div>
-        <div>
-          <div style="font-weight:800">${m.link ? `<a href="${m.link}" target="_blank" rel="noopener">${r.name}</a>` : r.name}</div>
-          <div class="muted mini">${r.id} • ${(c?.type || "unknown")}</div>
-        </div>
-        <div style="font-weight:900">${fmt(r.qty)}</div>
-        <div style="font-weight:900">${fmt(r.price)}</div>
-        <div class="right" style="font-weight:900">${fmt(r.value)}</div>
-      `;
-      wrap.appendChild(row);
-    }
-  }
-
-  /*****************************************************************
-   * 10) CHARACTERS UI (CARDS)
-   *****************************************************************/
-  function renderCharacters() {
-    const chars = getAllCharacters();
-    const q = ($("#gbxCharSearch", ui.root)?.value || "").trim().toLowerCase();
-    const list = q
-      ? chars.filter((c) =>
-          c.id.toLowerCase().includes(q) ||
-          c.name.toLowerCase().includes(q) ||
-          c.type.toLowerCase().includes(q)
-        )
-      : chars;
-
-    const grid = $("#gbxCharGrid", ui.root);
-    grid.innerHTML = "";
-
-    for (const c of list) {
-      const m = mediaFor(c.id);
       const card = document.createElement("div");
-      card.className = "card";
-      card.innerHTML = `
-        <div class="row" style="align-items:flex-start">
-          <div>
-            ${
-              m.image
-                ? `<img class="avatar" src="${m.image}" alt="${c.name}" style="width:76px;height:76px;border-radius:18px">`
-                : `<div class="avatar" style="width:76px;height:76px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:28px">${c.name.slice(0,1).toUpperCase()}</div>`
-            }
-          </div>
-          <div style="flex:1">
-            <div style="font-weight:900;font-size:16px;line-height:1.2">
-              ${m.link ? `<a href="${m.link}" target="_blank" rel="noopener">${c.name}</a>` : c.name}
-            </div>
-            <div class="muted mini">${c.id} • ${c.type}</div>
-            <div class="mini" style="margin-top:8px">
-              <div>Floor: ${fmt(c.floor)} • Cap: ${fmt(c.cap)} • Vol: ${fmt(c.volatility)}</div>
-              <div>Price: <b>${fmt(state.prices[c.id])}</b></div>
-            </div>
-          </div>
-        </div>
-      `;
+      card.className = "gb-card";
+
+      const img = document.createElement("img");
+      img.alt = ch.name;
+      if (imgUrl) img.src = imgUrl;
+
+      const pad = document.createElement("div");
+      pad.className = "pad";
+
+      const title = document.createElement("h3");
+      title.textContent = ch.name;
+
+      const meta = document.createElement("div");
+      meta.className = "gb-meta";
+      meta.textContent = `${ch.type} • id: ${ch.id}`;
+
+      const price = document.createElement("div");
+      price.className = "gb-price";
+      price.innerHTML = `<span>Price</span><span>${money(st?.price ?? 0)}</span>`;
+
+      const small = document.createElement("div");
+      small.className = "gb-small";
+      small.style.marginTop = "6px";
+      small.textContent = `Vol: ${st?.volatility ?? 0} • Cap: ${money(st?.capMax ?? 0)} • ${st?.stagnated ? "STAGNATED" : "LIVE"}`;
+
+      const btnRow = document.createElement("div");
+      btnRow.className = "gb-kv";
+      btnRow.style.marginTop = "10px";
+
+      const pick = document.createElement("button");
+      pick.className = "gb-btn";
+      pick.textContent = "Select";
+      pick.addEventListener("click", () => setSelected(ch.id));
+
+      btnRow.appendChild(pick);
+
+      if (linkUrl) {
+        const a = document.createElement("a");
+        a.className = "gb-btn gb-link";
+        a.href = linkUrl;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = "Open Link";
+        btnRow.appendChild(a);
+      }
+
+      pad.appendChild(title);
+      pad.appendChild(meta);
+      pad.appendChild(price);
+      pad.appendChild(small);
+      pad.appendChild(btnRow);
+
+      card.appendChild(img);
+      card.appendChild(pad);
       grid.appendChild(card);
     }
+
+    panel.appendChild(folderRow);
+    panel.appendChild(grid);
+    return panel;
   }
 
-  /*****************************************************************
-   * 11) ADMIN PANEL (LOCKED) — REQUIRED FEATURES
-   *     - Stagnate stocks (per-stock + global)
-   *     - Change volatility
-   *     - Choose stock prices
-   *     - Max cap the stock can reach
-   *     - Give themselves as many points as they wish
-   *     - Add/remove characters
-   *****************************************************************/
-  function renderAdmin() {
-    const wrap = $("#gbxAdminWrap", ui.root);
-    const authed = isEditAuthed();
-    const chars = getAllCharacters();
+  function renderCharacters(){
+    const panel = document.createElement("div");
+    panel.className = "gb-panel";
 
-    if (!authed) {
-      wrap.innerHTML = `
-        <div class="card">
-          <div style="font-weight:900;font-size:18px;margin-bottom:6px">Admin Locked</div>
-          <div class="muted" style="margin-bottom:10px">Enter password to unlock admin controls.</div>
-          <div class="row">
-            <input id="gbxAdminPw" type="password" placeholder="Password" style="min-width:240px">
-            <button id="gbxAdminUnlock">Unlock</button>
-            <button id="gbxAdminClearAuth" class="danger">Clear Auth</button>
-          </div>
-          <div class="muted mini" style="margin-top:8px">Password is defined at the top of app.js as EDIT_PANEL_PASSWORD.</div>
-        </div>
-      `;
-      $("#gbxAdminUnlock", wrap).addEventListener("click", () => {
-        const pw = $("#gbxAdminPw", wrap).value || "";
-        if (pw === EDIT_PANEL_PASSWORD) {
-          setEditAuthed(true);
-          renderAdmin();
-          flashPill("Admin unlocked.");
-        } else {
-          flashPill("Wrong password.");
-        }
-      });
-      $("#gbxAdminClearAuth", wrap).addEventListener("click", () => {
-        setEditAuthed(false);
-        flashPill("Admin auth cleared.");
-      });
-      return;
+    const p = document.createElement("div");
+    p.className = "gb-small";
+    p.textContent = `Loaded characters: ${BASE_CHARACTERS.length}. Images come from entityMedia when available.`;
+    panel.appendChild(p);
+
+    const list = document.createElement("div");
+    list.className = "gb-grid";
+    list.style.marginTop = "12px";
+
+    for (const ch of BASE_CHARACTERS) {
+      const media = entityMedia[ch.id] || {};
+      const imgUrl = safeUrl(media.image);
+      const linkUrl = safeUrl(media.link);
+
+      const card = document.createElement("div");
+      card.className = "gb-card";
+
+      const img = document.createElement("img");
+      img.alt = ch.name;
+      if (imgUrl) img.src = imgUrl;
+
+      const pad = document.createElement("div");
+      pad.className = "pad";
+
+      const title = document.createElement("h3");
+      title.textContent = ch.name;
+
+      const meta = document.createElement("div");
+      meta.className = "gb-meta";
+      meta.textContent = `id: ${ch.id} • type: ${ch.type} • stock# ${ch.stock}`;
+
+      const stats = document.createElement("div");
+      stats.className = "gb-small";
+      stats.style.marginTop = "6px";
+      stats.textContent = `min:${money(ch.min)} max:${money(ch.max)} base:${money(ch.base)} tags:[${(ch.tags||[]).join(",")}]`;
+
+      const row = document.createElement("div");
+      row.className = "gb-kv";
+      row.style.marginTop = "10px";
+
+      const sel = document.createElement("button");
+      sel.className = "gb-btn";
+      sel.textContent = "Select in Market";
+      sel.addEventListener("click", () => { state.ui.tab = "Market"; setSelected(ch.id); });
+
+      row.appendChild(sel);
+
+      if (linkUrl) {
+        const a = document.createElement("a");
+        a.className = "gb-btn gb-link";
+        a.href = linkUrl;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = "Open Link";
+        row.appendChild(a);
+      }
+
+      pad.appendChild(title);
+      pad.appendChild(meta);
+      pad.appendChild(stats);
+      pad.appendChild(row);
+
+      card.appendChild(img);
+      card.appendChild(pad);
+      list.appendChild(card);
     }
 
-    // build admin UI
-    wrap.innerHTML = `
-      <div class="card" style="margin-bottom:10px">
-        <div class="row" style="justify-content:space-between">
-          <div>
-            <div style="font-weight:900;font-size:18px;margin-bottom:4px">Admin Panel</div>
-            <div class="muted mini">You can freeze market, set prices, volatility, cap, and edit points.</div>
-          </div>
-          <div class="row">
-            <button id="gbxAdminLock">Lock</button>
-          </div>
-        </div>
-      </div>
+    panel.appendChild(list);
+    return panel;
+  }
 
-      <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:10px">
-        <div class="card">
-          <div style="font-weight:900;margin-bottom:6px">Market Controls</div>
-          <div class="row">
-            <span class="pill">Global Stagnation:
-              <button id="gbxAdminGlobalFreeze"></button>
-            </span>
-          </div>
-          <div class="muted mini" style="margin-top:8px">This stops ALL automatic price movement.</div>
-        </div>
+  function renderEditPanel(){
+    const panel = document.createElement("div");
+    panel.className = "gb-panel";
 
-        <div class="card">
-          <div style="font-weight:900;margin-bottom:6px">Give Yourself Points</div>
-          <div class="row">
-            <select id="gbxAdminPointsPort"></select>
-            <input id="gbxAdminPointsVal" type="number" step="1" placeholder="Points (any number)">
-            <button id="gbxAdminSetPoints">Set Points</button>
-          </div>
-          <div class="muted mini" style="margin-top:8px">This sets the portfolio points exactly to what you enter.</div>
-        </div>
-      </div>
+    const h = document.createElement("div");
+    h.className = "gb-kv";
+    h.innerHTML = `<b>Admin Panel</b> <span class="gb-small">(stagnate, volatility, set price, max cap, give points)</span>`;
 
-      <div class="card" style="margin-bottom:10px">
-        <div style="font-weight:900;margin-bottom:8px">Stock Editor</div>
-        <div class="row" style="margin-bottom:8px">
-          <select id="gbxAdminStockSelect" style="min-width:280px"></select>
-          <button id="gbxAdminLoadStock">Load</button>
-          <button id="gbxAdminResetOverrides" class="danger">Reset Overrides (Selected)</button>
-        </div>
-        <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
-          <div>
-            <div class="muted mini">Current Price</div>
-            <input id="gbxAdminPrice" type="number" step="1">
-          </div>
-          <div>
-            <div class="muted mini">Volatility</div>
-            <input id="gbxAdminVol" type="number" step="1">
-          </div>
-          <div>
-            <div class="muted mini">Floor</div>
-            <input id="gbxAdminFloor" type="number" step="1">
-          </div>
-          <div>
-            <div class="muted mini">Cap (Max Price)</div>
-            <input id="gbxAdminCap" type="number" step="1">
-          </div>
-        </div>
-        <div class="row" style="margin-top:10px;justify-content:space-between">
-          <label class="pill" style="cursor:pointer">
-            <input id="gbxAdminStagnant" type="checkbox" style="margin-right:8px">
-            Stagnate This Stock
-          </label>
-          <button id="gbxAdminApplyStock" class="ok">Apply Changes</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div style="font-weight:900;margin-bottom:8px">Character Manager</div>
-        <div class="muted mini" style="margin-bottom:10px">Add/Update custom characters or remove by id.</div>
-
-        <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px">
-          <div>
-            <div class="muted mini">id (unique)</div>
-            <input id="gbxCharId" placeholder="e.g. new_guy">
-          </div>
-          <div>
-            <div class="muted mini">name</div>
-            <input id="gbxCharName" placeholder="Display Name">
-          </div>
-          <div>
-            <div class="muted mini">type</div>
-            <input id="gbxCharType" placeholder="human/npc/maji...">
-          </div>
-          <div>
-            <div class="muted mini">folders (comma nums)</div>
-            <input id="gbxCharFolders" placeholder="e.g. 5,3">
-          </div>
-
-          <div>
-            <div class="muted mini">code</div>
-            <input id="gbxCharCode" type="number" step="1">
-          </div>
-          <div>
-            <div class="muted mini">floor</div>
-            <input id="gbxCharFloor" type="number" step="1">
-          </div>
-          <div>
-            <div class="muted mini">cap</div>
-            <input id="gbxCharCap" type="number" step="1">
-          </div>
-          <div>
-            <div class="muted mini">volatility</div>
-            <input id="gbxCharVol" type="number" step="1">
-          </div>
-
-          <div style="grid-column: span 2">
-            <div class="muted mini">image url (optional)</div>
-            <input id="gbxCharImg" placeholder="https://...">
-          </div>
-          <div style="grid-column: span 2">
-            <div class="muted mini">link url (optional)</div>
-            <input id="gbxCharLink" placeholder="https://...">
-          </div>
-        </div>
-
-        <div class="row" style="justify-content:space-between">
-          <div class="row">
-            <button id="gbxCharAdd" class="ok">Add / Update Character</button>
-            <button id="gbxCharRemove" class="danger">Remove Character</button>
-          </div>
-          <div class="muted mini">Removing deletes custom entry + overrides + holdings for that id.</div>
-        </div>
-      </div>
-    `;
-
-    $("#gbxAdminLock", wrap).addEventListener("click", () => {
+    const logout = document.createElement("button");
+    logout.className = "gb-btn";
+    logout.textContent = "Lock (log out)";
+    logout.addEventListener("click", () => {
       setEditAuthed(false);
-      renderAdmin();
-      flashPill("Admin locked.");
+      render();
     });
+    h.appendChild(logout);
 
-    // global freeze
-    $("#gbxAdminGlobalFreeze", wrap).textContent = state.globalStagnant ? "UNFREEZE Market" : "FREEZE Market";
-    $("#gbxAdminGlobalFreeze", wrap).addEventListener("click", () => {
-      state.globalStagnant = !state.globalStagnant;
-      persistState();
-      renderHeader();
-      renderMarket();
-      renderAdmin();
-    });
+    panel.appendChild(h);
+    panel.appendChild(divider());
 
-    // points
-    const portSel = $("#gbxAdminPointsPort", wrap);
-    portSel.innerHTML = "";
-    for (const p of PORT_KEYS) {
-      const o = document.createElement("option");
-      o.value = p; o.textContent = p;
-      portSel.appendChild(o);
-    }
-    portSel.value = state.activePortfolio;
+    // Folder points controls
+    const folderBox = document.createElement("div");
+    folderBox.className = "gb-kv";
+    folderBox.innerHTML = `<b>Folder Points:</b>`;
 
-    $("#gbxAdminSetPoints", wrap).addEventListener("click", () => {
-      const p = portSel.value;
-      const val = toInt($("#gbxAdminPointsVal", wrap).value, NaN);
-      if (!Number.isFinite(val)) {
-        flashPill("Enter a number.");
-        return;
-      }
-      state.portfolios[p].points = val;
-      persistState();
-      renderHeader();
-      renderHoldings();
-      renderMarket();
-      flashPill(`Points set for ${p}.`);
-    });
-
-    // stock select
-    const stockSel = $("#gbxAdminStockSelect", wrap);
-    stockSel.innerHTML = "";
-    for (const c of chars) {
-      const o = document.createElement("option");
-      o.value = c.id;
-      o.textContent = `${c.name} (${c.id})`;
-      stockSel.appendChild(o);
+    const folderSel = document.createElement("select");
+    folderSel.className = "gb-select";
+    for (const f of FOLDERS) {
+      const opt = document.createElement("option");
+      opt.value = f;
+      opt.textContent = f;
+      if (f === state.ui.folder) opt.selected = true;
+      folderSel.appendChild(opt);
     }
 
-    const loadStockIntoFields = (id) => {
-      const c = getAllCharacters().find((x) => x.id === id);
-      if (!c) return;
-      $("#gbxAdminPrice", wrap).value = toInt(state.prices[id], clamp(Math.round((c.floor + c.cap) / 2), c.floor, c.cap));
-      $("#gbxAdminVol", wrap).value = c.volatility;
-      $("#gbxAdminFloor", wrap).value = c.floor;
-      $("#gbxAdminCap", wrap).value = c.cap;
-      $("#gbxAdminStagnant", wrap).checked = !!c.stagnant;
-    };
+    const ptsNow = document.createElement("div");
+    ptsNow.className = "gb-small";
 
-    $("#gbxAdminLoadStock", wrap).addEventListener("click", () => loadStockIntoFields(stockSel.value));
-    stockSel.addEventListener("change", () => loadStockIntoFields(stockSel.value));
+    function refreshPtsNow(){
+      const f = folderSel.value;
+      ptsNow.textContent = `Current points in ${f}: ${money(getPoints(f))}`;
+    }
+    folderSel.addEventListener("change", refreshPtsNow);
+    refreshPtsNow();
 
-    $("#gbxAdminApplyStock", wrap).addEventListener("click", () => {
+    const addPts = document.createElement("input");
+    addPts.className = "gb-input";
+    addPts.type = "number";
+    addPts.step = "1";
+    addPts.placeholder = "Add points (e.g. 1000000)";
+
+    const addBtn = document.createElement("button");
+    addBtn.className = "gb-btn";
+    addBtn.textContent = "Give Points";
+    addBtn.addEventListener("click", () => {
+      addPoints(folderSel.value, nnum(addPts.value, 0));
+      addPts.value = "";
+      refreshPtsNow();
+    });
+
+    const setPts = document.createElement("input");
+    setPts.className = "gb-input";
+    setPts.type = "number";
+    setPts.step = "1";
+    setPts.placeholder = "Set points (absolute)";
+
+    const setBtn = document.createElement("button");
+    setBtn.className = "gb-btn";
+    setBtn.textContent = "Set Points";
+    setBtn.addEventListener("click", () => {
+      setPoints(folderSel.value, nnum(setPts.value, 0));
+      setPts.value = "";
+      refreshPtsNow();
+    });
+
+    folderBox.appendChild(folderSel);
+    folderBox.appendChild(ptsNow);
+    folderBox.appendChild(addPts);
+    folderBox.appendChild(addBtn);
+    folderBox.appendChild(setPts);
+    folderBox.appendChild(setBtn);
+
+    panel.appendChild(folderBox);
+    panel.appendChild(divider());
+
+    // Stock controls
+    const stockBox = document.createElement("div");
+    stockBox.className = "gb-kv";
+    stockBox.innerHTML = `<b>Stock Controls:</b>`;
+
+    const stockSel = document.createElement("select");
+    stockSel.className = "gb-select";
+    for (const ch of BASE_CHARACTERS) {
+      const opt = document.createElement("option");
+      opt.value = ch.id;
+      opt.textContent = `${ch.name} (${ch.id})`;
+      if (ch.id === state.ui.selectedId) opt.selected = true;
+      stockSel.appendChild(opt);
+    }
+
+    const stNow = document.createElement("div");
+    stNow.className = "gb-small";
+
+    const volInput = document.createElement("input");
+    volInput.className = "gb-input";
+    volInput.type = "number";
+    volInput.step = "0.1";
+    volInput.placeholder = "Volatility (0 = frozen)";
+
+    const priceInput = document.createElement("input");
+    priceInput.className = "gb-input";
+    priceInput.type = "number";
+    priceInput.step = "1";
+    priceInput.placeholder = "Set price";
+
+    const capInput = document.createElement("input");
+    capInput.className = "gb-input";
+    capInput.type = "number";
+    capInput.step = "1";
+    capInput.placeholder = "Set max cap";
+
+    const stagnateBtn = document.createElement("button");
+    stagnateBtn.className = "gb-btn";
+
+    function refreshStockNow(){
       const id = stockSel.value;
-      const floor = toInt($("#gbxAdminFloor", wrap).value, 0);
-      const cap = toInt($("#gbxAdminCap", wrap).value, floor);
-      const vol = Math.max(0, toInt($("#gbxAdminVol", wrap).value, 0));
-      let price = toInt($("#gbxAdminPrice", wrap).value, floor);
-      const stagnant = !!$("#gbxAdminStagnant", wrap).checked;
+      state.ui.selectedId = id; // keep selection synced
+      const st = state.stocks[id];
+      stNow.innerHTML = st
+        ? `Price: <b>${money(st.price)}</b> • Vol: <b>${st.volatility}</b> • Cap: <b>${money(st.capMax)}</b> • Stagnated: <b>${st.stagnated ? "YES" : "NO"}</b>`
+        : "Unknown stock.";
 
-      const fixedCap = Math.max(floor, cap);
-      price = clamp(price, floor, fixedCap);
-
-      overrides[id] = {
-        ...(overrides[id] || {}),
-        floor,
-        cap: fixedCap,
-        volatility: vol,
-        stagnant,
-      };
-      persistOverrides();
-
-      state.prices[id] = price;
-      state.lastDelta[id] = 0;
-      persistState();
-
-      renderHeader();
-      renderMarket();
-      renderHoldings();
-      renderCharacters();
-      renderAdmin();
-
-      flashPill("Stock updated.");
-    });
-
-    $("#gbxAdminResetOverrides", wrap).addEventListener("click", () => {
-      const id = stockSel.value;
-      if (overrides[id]) delete overrides[id];
-      persistOverrides();
-
-      // also snap price back into base bounds
-      const base = (BASE_CHARACTERS.find((x) => x.id === id) || customChars[id]);
-      const nb = normalizeChar(base || { id, floor: 0, cap: 0, volatility: 0, name: id, type: "unknown", folders: [], code: 0 });
-      state.prices[id] = clamp(toInt(state.prices[id], 0), nb.floor, nb.cap);
-      state.lastDelta[id] = 0;
-      persistState();
-
-      renderMarket();
-      renderHoldings();
-      renderCharacters();
-      renderAdmin();
-      flashPill("Overrides reset.");
-    });
-
-    // initial load
-    if (chars.length) loadStockIntoFields(chars[0].id);
-
-    // character manager
-    function readCharForm() {
-      const id = String($("#gbxCharId", wrap).value || "").trim();
-      const name = String($("#gbxCharName", wrap).value || "").trim() || id;
-      const type = String($("#gbxCharType", wrap).value || "").trim() || "custom";
-      const foldersRaw = String($("#gbxCharFolders", wrap).value || "").trim();
-      const folders = foldersRaw
-        ? foldersRaw.split(",").map((s) => toInt(s.trim(), 0)).filter((n) => Number.isFinite(n))
-        : [];
-      const code = toInt($("#gbxCharCode", wrap).value, 0);
-      const floor = toInt($("#gbxCharFloor", wrap).value, 0);
-      const cap = Math.max(floor, toInt($("#gbxCharCap", wrap).value, floor));
-      const volatility = Math.max(0, toInt($("#gbxCharVol", wrap).value, 0));
-      const img = safeUrl($("#gbxCharImg", wrap).value || "");
-      const link = safeUrl($("#gbxCharLink", wrap).value || "");
-      return { id, name, type, folders, code, floor, cap, volatility, img, link };
+      stagnateBtn.textContent = (st && st.stagnated) ? "Unstagnate (Resume)" : "Stagnate (Freeze)";
     }
 
-    $("#gbxCharAdd", wrap).addEventListener("click", () => {
-      const c = readCharForm();
-      if (!c.id) {
-        flashPill("Character id required.");
-        return;
-      }
-      customChars[c.id] = {
-        id: c.id,
-        name: c.name,
-        type: c.type,
-        folders: c.folders,
-        code: c.code,
-        floor: c.floor,
-        cap: c.cap,
-        volatility: c.volatility,
-      };
-      persistCustom();
+    stockSel.addEventListener("change", refreshStockNow);
 
-      // also set media if provided
-      if (c.img || c.link) {
-        entityMedia[c.id] = {
-          image: c.img || (entityMedia[c.id]?.image || ""),
-          link: c.link || (entityMedia[c.id]?.link || ""),
-        };
-      }
-
-      // ensure price exists
-      if (!Number.isFinite(+state.prices[c.id])) {
-        state.prices[c.id] = clamp(Math.round((c.floor + c.cap) / 2), c.floor, c.cap);
-      } else {
-        state.prices[c.id] = clamp(toInt(state.prices[c.id], c.floor), c.floor, c.cap);
-      }
-      persistState();
-
-      renderMarket();
-      renderHoldings();
-      renderCharacters();
-      renderAdmin();
-      flashPill("Character added/updated.");
+    const applyVol = document.createElement("button");
+    applyVol.className = "gb-btn";
+    applyVol.textContent = "Apply Volatility";
+    applyVol.addEventListener("click", () => {
+      const id = stockSel.value;
+      const st = state.stocks[id];
+      if (!st) return;
+      st.volatility = clamp(nnum(volInput.value, st.volatility), 0, 1000);
+      persist();
+      refreshStockNow();
+      render(); // reflect immediately on market
     });
 
-    $("#gbxCharRemove", wrap).addEventListener("click", () => {
-      const id = String($("#gbxCharId", wrap).value || "").trim();
-      if (!id) {
-        flashPill("Enter id to remove.");
-        return;
-      }
-      // remove from custom
-      if (customChars[id]) delete customChars[id];
-      persistCustom();
-      // remove overrides
-      if (overrides[id]) delete overrides[id];
-      persistOverrides();
-      // remove price
-      if (state.prices[id] != null) delete state.prices[id];
-      if (state.lastDelta[id] != null) delete state.lastDelta[id];
-      // remove holdings
-      for (const p of PORT_KEYS) {
-        if (state.portfolios[p]?.holdings?.[id] != null) delete state.portfolios[p].holdings[id];
-      }
-      persistState();
-
-      renderMarket();
-      renderHoldings();
-      renderCharacters();
-      renderAdmin();
-      flashPill("Character removed.");
+    const applyPrice = document.createElement("button");
+    applyPrice.className = "gb-btn";
+    applyPrice.textContent = "Set Price";
+    applyPrice.addEventListener("click", () => {
+      const id = stockSel.value;
+      const st = state.stocks[id];
+      if (!st) return;
+      const val = Math.max(0, nnum(priceInput.value, st.price));
+      st.price = Math.min(val, st.capMax);
+      // ensure cap >= price (if user set cap lower earlier)
+      st.capMax = Math.max(st.capMax, st.price);
+      persist();
+      refreshStockNow();
+      render();
     });
+
+    const applyCap = document.createElement("button");
+    applyCap.className = "gb-btn";
+    applyCap.textContent = "Set Max Cap";
+    applyCap.addEventListener("click", () => {
+      const id = stockSel.value;
+      const st = state.stocks[id];
+      if (!st) return;
+      const val = Math.max(0, nnum(capInput.value, st.capMax));
+      st.capMax = Math.max(val, st.price); // cap can’t be below current price
+      persist();
+      refreshStockNow();
+      render();
+    });
+
+    stagnateBtn.addEventListener("click", () => {
+      const id = stockSel.value;
+      const st = state.stocks[id];
+      if (!st) return;
+      st.stagnated = !st.stagnated;
+      persist();
+      refreshStockNow();
+      render();
+    });
+
+    const resetAll = document.createElement("button");
+    resetAll.className = "gb-btn";
+    resetAll.textContent = "Reset ALL Stocks (defaults)";
+    resetAll.addEventListener("click", () => {
+      for (const ch of BASE_CHARACTERS) {
+        state.stocks[ch.id] = defaultStockForChar(ch);
+      }
+      persist();
+      refreshStockNow();
+      render();
+    });
+
+    stockBox.appendChild(stockSel);
+    stockBox.appendChild(stNow);
+    stockBox.appendChild(volInput);
+    stockBox.appendChild(applyVol);
+    stockBox.appendChild(priceInput);
+    stockBox.appendChild(applyPrice);
+    stockBox.appendChild(capInput);
+    stockBox.appendChild(applyCap);
+    stockBox.appendChild(stagnateBtn);
+    stockBox.appendChild(resetAll);
+
+    panel.appendChild(stockBox);
+
+    refreshStockNow();
+    return panel;
   }
 
-  /*****************************************************************
-   * 12) STOCK TICK (VOLATILITY + CAPS + STAGNATION)
-   *****************************************************************/
-  function tickPrices() {
-    if (state.globalStagnant) return;
+  function divider(){
+    const d = document.createElement("div");
+    d.className = "gb-divider";
+    return d;
+  }
 
-    const chars = getAllCharacters();
-    let changedAny = false;
+  function render(){
+    if (!root) return;
 
-    for (const c of chars) {
-      if (c.stagnant) {
-        state.lastDelta[c.id] = 0;
-        continue;
-      }
+    root.innerHTML = "";
 
-      const floor = toInt(c.floor, 0);
-      const cap = Math.max(floor, toInt(c.cap, floor));
-      const vol = Math.max(0, toInt(c.volatility, 0));
+    const top = document.createElement("div");
+    top.className = "gb-top";
 
-      const cur = clamp(toInt(state.prices[c.id], clamp(Math.round((floor + cap) / 2), floor, cap)), floor, cap);
+    const title = document.createElement("div");
+    title.className = "gb-title";
+    title.textContent = "GATE//BREACH — Market";
 
-      // volatility scale: keep it usable even with big vol values
-      const step = (Math.random() * 2 - 1) * Math.max(1, Math.round(vol * 0.20));
-      const drift = (Math.random() * 2 - 1) * 2;
-      const next = clamp(Math.round(cur + step + drift), floor, cap);
+    const tabs = document.createElement("div");
+    tabs.className = "gb-tabs";
 
-      const delta = next - cur;
-      state.prices[c.id] = next;
-      state.lastDelta[c.id] = delta;
-      if (delta !== 0) changedAny = true;
-
-      // live update row if visible
-      const rowRef = ui.stockRows.get(c.id);
-      if (rowRef) {
-        const row = rowRef.row;
-        const priceEl = row.children[2]?.querySelector("div");
-        const deltaEl = row.children[2]?.querySelector("div.mini");
-        if (priceEl) priceEl.textContent = fmt(next);
-        if (deltaEl) {
-          deltaEl.textContent = deltaText(delta);
-          deltaEl.className = `mini ${getDeltaClass(delta)}`;
+    const tabNames = ["Market", "Characters", "Edit"];
+    for (const t of tabNames) {
+      const btn = document.createElement("button");
+      btn.className = "gb-tab";
+      btn.type = "button";
+      btn.textContent = t;
+      btn.setAttribute("aria-current", String(state.ui.tab === t));
+      btn.addEventListener("click", () => {
+        if (t === "Edit") {
+          requireAdminThen(() => setTab("Edit"));
+        } else {
+          setTab(t);
         }
-      }
+      });
+      tabs.appendChild(btn);
     }
 
-    if (changedAny) {
-      persistState();
+    top.appendChild(title);
+    top.appendChild(tabs);
+    root.appendChild(top);
+
+    // content
+    let content;
+    if (state.ui.tab === "Market") content = renderMarket();
+    else if (state.ui.tab === "Characters") content = renderCharacters();
+    else if (state.ui.tab === "Edit") {
+      // If they somehow force it open without auth, re-lock.
+      if (!isEditAuthed()) {
+        state.ui.tab = "Market";
+        persist();
+        content = renderMarket();
+      } else {
+        content = renderEditPanel();
+      }
+    } else {
+      content = renderMarket();
     }
+
+    root.appendChild(content);
   }
 
   /*****************************************************************
-   * 13) BOOT
+   * 9) BOOT
    *****************************************************************/
-  buildUI();
+  function boot(){
+    injectStyles();
+    root = ensureRoot();
 
-  // continuous tick
-  setInterval(tickPrices, Math.max(800, toInt(state.tickMs, 2500)));
+    modalBack = document.createElement("div");
+    modalBack.className = "gb-modal-back";
+    modalBack.addEventListener("click", (e) => {
+      if (e.target === modalBack) closeModal();
+    });
+    document.body.appendChild(modalBack);
 
+    // Make sure folders always exist
+    for (const f of FOLDERS) {
+      if (!state.folders[f]) state.folders[f] = { points: DEFAULT_POINTS };
+      if (typeof state.folders[f].points !== "number") state.folders[f].points = DEFAULT_POINTS;
+    }
+
+    // Make sure every character stock exists (this is the "add everyone" safety net)
+    for (const ch of BASE_CHARACTERS) {
+      if (!state.stocks[ch.id]) state.stocks[ch.id] = defaultStockForChar(ch);
+    }
+
+    persist();
+    render();
+
+    // engine loop
+    setInterval(() => {
+      tickStocks();
+      persist();
+      // re-render only if on Market (keeps it smooth)
+      if (state.ui.tab === "Market") render();
+    }, 900);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 })();
