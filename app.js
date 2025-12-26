@@ -8,7 +8,7 @@
   /*****************************************************************
    * 0) ADMIN PASSWORD (CHANGE THIS)
    *****************************************************************/
-  const ADMIN_PASSWORD = "Bumjin"; // <-- change it
+  const ADMIN_PASSWORD = "bumjin"; // <-- change it
   const ADMIN_AUTH_KEY = "gb_admin_authed_v1";
 
   /*****************************************************************
@@ -2160,5 +2160,6 @@
     boot();
   }
 })();
+
 
 
