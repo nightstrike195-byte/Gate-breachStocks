@@ -8,13 +8,13 @@
   /*****************************************************************
    * 0) ADMIN PASSWORD (CHANGE THIS)
    *****************************************************************/
-  const ADMIN_PASSWORD = "bumjin"; // <-- change it
+  const ADMIN_PASSWORD = "bumjin";
   const ADMIN_AUTH_KEY = "gb_admin_authed_v1";
 
   /*****************************************************************
-   * 1) BASE MEDIA (YOUR entityMedia)
+   * 1) BASE MEDIA (PASTE YOUR entityMedia HERE)
    *****************************************************************/
-  const entityMedia = {
+   const entityMedia = {
     "kaien_dazhen": { image: "https://media.discordapp.net/attachments/708562883075637278/1453717432761057424/image.png?ex=694e775c&is=694d25dc&hm=345aa7ce62acb6763cbce1d4462a9546fda04cd8714fc7a2daa9616408ba3f8d&=&format=webp&quality=lossless&width=492&height=359", link: "https://example.com/kaien" },
     "raijin_kurozawa": { image: "https://media.discordapp.net/attachments/708562883075637278/1453719884616699945/image.png?ex=694e79a5&is=694d2825&hm=f6da8bcdecb9e59a1b6305d6b1c117075223d0bba9cf0612eb301080f601c448&=&format=webp&quality=lossless&width=559&height=493", link: "https://example.com/raijin" },
 
@@ -299,10 +299,8 @@
     const s = loadJSON(KEY_STATE, null);
     if (!s || typeof s !== "object") return structuredClone(DEFAULT_STATE);
 
-    // Merge & sanity
     const m = structuredClone(DEFAULT_STATE);
 
-    // ui
     if (s.ui && typeof s.ui === "object") {
       if (typeof s.ui.nav === "string") m.ui.nav = s.ui.nav;
       if (typeof s.ui.folder === "string") m.ui.folder = s.ui.folder;
@@ -312,10 +310,8 @@
       m.ui.bulkQty = clamp(nnum(s.ui.bulkQty, 1), 1, 1e6);
     }
 
-    // day
     m.day = Math.max(0, Math.floor(nnum(s.day, 0)));
 
-    // folders
     if (s.folders && typeof s.folders === "object") {
       for (const f of FOLDERS) {
         const cur = s.folders[f];
@@ -332,7 +328,6 @@
       }
     }
 
-    // media overrides
     if (s.mediaOverrides && typeof s.mediaOverrides === "object") {
       for (const [id, v] of Object.entries(s.mediaOverrides)) {
         if (!v || typeof v !== "object") continue;
@@ -342,7 +337,6 @@
       }
     }
 
-    // custom chars / removed
     if (Array.isArray(s.customChars)) {
       m.customChars = s.customChars
         .filter(c => c && typeof c === "object" && typeof c.id === "string" && typeof c.name === "string")
@@ -362,7 +356,6 @@
       m.removedIds = s.removedIds.filter(x => typeof x === "string");
     }
 
-    // stocks
     if (s.stocks && typeof s.stocks === "object") {
       for (const [id, v] of Object.entries(s.stocks)) {
         if (!v || typeof v !== "object") continue;
@@ -394,7 +387,6 @@
     const removed = new Set(state.removedIds || []);
     const base = BASE_CHARACTERS.filter(c => !removed.has(c.id));
     const custom = (state.customChars || []).filter(c => c && c.id && !removed.has(c.id));
-    // de-dupe by id (custom overrides base if same id)
     const map = new Map();
     for (const c of base) map.set(c.id, c);
     for (const c of custom) map.set(c.id, c);
@@ -424,20 +416,16 @@
    * 7) DOM REFS + PATCHES (to use your CSS grid)
    *****************************************************************/
   const dom = {
-    // nav
     navBtns: $$(".pill[data-nav]"),
 
-    // panels
     marketPanel: $("#marketPanel"),
     projectsPanel: $("#projectsPanel"),
     editPanel: $("#editPanel"),
 
-    // topbar
     dayEl: $("#dayEl"),
     balanceEl: $("#balanceEl"),
     netWorthEl: $("#netWorthEl"),
 
-    // market filters
     searchInput: $("#searchInput"),
     arcSelect: $("#arcSelect"),
     typeSelect: $("#typeSelect"),
@@ -445,10 +433,8 @@
     resultCount: $("#resultCount"),
     marketGrid: $("#marketGrid"),
 
-    // projects (folders) grid
     projectsGrid: $("#projectsGrid"),
 
-    // wanted
     wantedImg: $("#wantedImg"),
     wantedName: $("#wantedName"),
     wantedRole: $("#wantedRole"),
@@ -462,18 +448,15 @@
     wantedSellBtn: $("#wantedSellBtn"),
     wantedLinkBtn: $("#wantedLinkBtn"),
 
-    // portfolio
     positionsCount: $("#positionsCount"),
     holdingsValue: $("#holdingsValue"),
     cashValue: $("#cashValue"),
     positionsList: $("#positionsList"),
     resetAllBtn: $("#resetAllBtn"),
 
-    // movers
     gainersList: $("#gainersList"),
     losersList: $("#losersList"),
 
-    // sim
     playBtn: $("#playBtn"),
     pauseBtn: $("#pauseBtn"),
     step1Btn: $("#step1Btn"),
@@ -481,7 +464,6 @@
     speedSelect: $("#speedSelect"),
     globalVol: $("#globalVol"),
 
-    // edit existing controls
     editCharSelect: $("#editCharSelect"),
     editImg: $("#editImg"),
     editLink: $("#editLink"),
@@ -490,7 +472,6 @@
     resetEditBtn: $("#resetEditBtn"),
     applyBulkBtn: $("#applyBulkBtn"),
 
-    // modal
     modalBackdrop: $("#modalBackdrop"),
     detailModal: $("#detailModal"),
     closeModalBtn: $("#closeModalBtn"),
@@ -518,12 +499,9 @@
       "modalBackdrop","detailModal","closeModalBtn","spark"
     ];
     for (const k of required) {
-      if (!dom[k]) {
-        console.warn("[GB] Missing DOM element:", k);
-      }
+      if (!dom[k]) console.warn("[GB] Missing DOM element:", k);
     }
 
-    // Patch classnames so your CSS grid styles apply to the right containers
     if (dom.marketGrid) dom.marketGrid.classList.add("projectsGrid");
     if (dom.positionsList) dom.positionsList.classList.add("portfolioList");
     if (dom.marketPanel) {
@@ -536,7 +514,7 @@
   }
 
   /*****************************************************************
-   * 8) NAV + ADMIN LOCK (PASSWORD)
+   * 8) NAV + ADMIN LOCK (PASSWORD)  ✅ FIXED (no longer nukes modal)
    *****************************************************************/
   function showOnly(nav) {
     state.ui.nav = nav;
@@ -554,23 +532,20 @@
   }
 
   function openAdminPrompt(onSuccess) {
-    // Use #modalBackdrop as a generic prompt container (no HTML changes needed)
-    const back = dom.modalBackdrop;
-    if (!back) {
-      const val = prompt("Admin password:");
-      if (val === ADMIN_PASSWORD) {
-        setAdminAuthed(true);
-        onSuccess();
-      }
-      return;
-    }
+    // Create a dedicated overlay so we DON'T clear/overwrite #modalBackdrop (which breaks your detail modal)
+    const EXISTING = $("#gbAdminOverlay");
+    if (EXISTING) EXISTING.remove();
 
-    back.classList.remove("hidden");
-    back.innerHTML = "";
-    back.style.display = "flex";
-    back.style.alignItems = "center";
-    back.style.justifyContent = "center";
-    back.style.padding = "16px";
+    const overlay = document.createElement("div");
+    overlay.id = "gbAdminOverlay";
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.zIndex = "999999";
+    overlay.style.background = "rgba(0,0,0,0.6)";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.padding = "16px";
 
     const card = document.createElement("div");
     card.className = "adminCard";
@@ -588,6 +563,7 @@
     input.className = "input";
     input.type = "password";
     input.placeholder = "Password";
+    input.autocomplete = "current-password";
 
     const row = document.createElement("div");
     row.className = "editBtns";
@@ -605,16 +581,11 @@
     msg.style.marginTop = "8px";
 
     const close = () => {
-      back.classList.add("hidden");
-      back.innerHTML = "";
-      back.style.display = "";
-      back.style.alignItems = "";
-      back.style.justifyContent = "";
-      back.style.padding = "";
+      overlay.remove();
     };
 
     const doUnlock = () => {
-      const val = String(input.value || "");
+      const val = String(input.value || "").trim(); // ✅ trim fixes “looks right but fails”
       if (val === ADMIN_PASSWORD) {
         setAdminAuthed(true);
         close();
@@ -626,7 +597,7 @@
 
     unlock.addEventListener("click", doUnlock);
     cancel.addEventListener("click", close);
-    back.addEventListener("click", (e) => { if (e.target === back) close(); });
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") doUnlock();
       if (e.key === "Escape") close();
@@ -641,7 +612,8 @@
     card.appendChild(row);
     card.appendChild(msg);
 
-    back.appendChild(card);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
     input.focus();
   }
 
@@ -766,7 +738,6 @@
       st.history.push(next);
       st.history = st.history.slice(-120);
 
-      // keep cap >= price always
       st.cap = Math.max(st.cap, st.price);
     }
 
@@ -889,7 +860,6 @@
       dom.modalLinkBtn.style.opacity = media.link ? "1" : "0.5";
     }
 
-    // keep selected synced to wanted
     state.ui.selectedId = id;
     persist();
     renderWanted();
@@ -1005,7 +975,6 @@
       const q = clamp(nnum(state.ui.bulkQty, 1), 1, 1e6);
       const ids = Array.from(new Set(state.ui.bulkSelected || []));
       for (const id of ids) buy(id, q);
-      // keep selection after purchase
       renderMarket();
     });
 
@@ -1025,7 +994,6 @@
   }
 
   function getFilterOptions(chars) {
-    // arcs from tags (numbers)
     const arcs = new Set();
     const types = new Set();
     for (const c of chars) {
@@ -1042,7 +1010,6 @@
     const chars = getAllCharacters();
     const { arcs, types } = getFilterOptions(chars);
 
-    // Arc select
     if (dom.arcSelect && dom.arcSelect.options.length === 0) {
       dom.arcSelect.innerHTML = "";
       const all = document.createElement("option");
@@ -1058,7 +1025,6 @@
       }
     }
 
-    // Type select
     if (dom.typeSelect && dom.typeSelect.options.length === 0) {
       dom.typeSelect.innerHTML = "";
       const all = document.createElement("option");
@@ -1074,7 +1040,6 @@
       }
     }
 
-    // Sort select
     if (dom.sortSelect && dom.sortSelect.options.length === 0) {
       dom.sortSelect.innerHTML = "";
       const opts = [
@@ -1104,7 +1069,6 @@
 
     const chars = getAllCharacters();
 
-    // keep selected valid
     if (!getCharById(state.ui.selectedId)) state.ui.selectedId = chars[0]?.id || "";
 
     const q = String(dom.searchInput?.value || "").trim().toLowerCase();
@@ -1128,7 +1092,6 @@
       list = list.filter(c => String(c.type) === type);
     }
 
-    // sort
     list.sort((a, b) => {
       ensureStock(a.id);
       ensureStock(b.id);
@@ -1147,7 +1110,6 @@
     if (!dom.marketGrid) return;
     dom.marketGrid.innerHTML = "";
 
-    // bulk bar status
     if (bulkToggleBtn) bulkToggleBtn.textContent = `Bulk: ${state.ui.bulkMode ? "ON" : "OFF"}`;
     if (bulkCountEl) bulkCountEl.textContent = `Selected: ${(state.ui.bulkSelected || []).length}`;
     if (qtyInput) qtyInput.value = String(state.ui.bulkQty || 1);
@@ -1172,7 +1134,6 @@
       if (media.image) img.src = media.image;
       top.appendChild(img);
 
-      // pick checkbox (bulk mode only)
       if (state.ui.bulkMode) {
         const pick = document.createElement("div");
         pick.className = "pickBox";
@@ -1376,7 +1337,6 @@
       }
     }
 
-    // topbar numbers
     dom.dayEl && (dom.dayEl.textContent = String(state.day));
     dom.balanceEl && (dom.balanceEl.textContent = money(cash));
     dom.netWorthEl && (dom.netWorthEl.textContent = money(net));
@@ -1873,7 +1833,6 @@
       const id = stockSel.value;
       ensureStock(id);
       state.stocks[id].volatility = clamp(nnum(volIn.value, state.stocks[id].volatility), 0, 1000);
-      // optional: if they set vol 0, freeze it too
       if (state.stocks[id].volatility <= 0) state.stocks[id].frozen = true;
       persist();
       refreshSt();
@@ -2003,19 +1962,15 @@
         base: nnum(baseIn.value, 0)
       };
 
-      // put into custom (override if exists)
-      const idx = (state.customChars || hint).customChars?.findIndex?.(() => -1);
       if (!Array.isArray(state.customChars)) state.customChars = [];
       state.customChars = state.customChars.filter(x => x && x.id !== id);
       state.customChars.push(c);
 
-      // un-remove if previously removed
       state.removedIds = (state.removedIds || []).filter(x => x !== id);
 
       ensureStock(id);
 
       persist();
-      // refresh selects
       fillHoldCharSel();
       fillStockSel();
       populateEditSelect();
@@ -2051,7 +2006,6 @@
       if (!Array.isArray(state.removedIds)) state.removedIds = [];
       if (!state.removedIds.includes(id)) state.removedIds.push(id);
 
-      // also clear holdings across folders
       for (const f of FOLDERS) {
         const fol = state.folders[f];
         if (fol && fol.holdings) delete fol.holdings[id];
@@ -2091,7 +2045,6 @@
 
   function renderEdit() {
     if (!isAdminAuthed()) {
-      // hard stop if someone forces edit visible
       showOnly("market");
       return;
     }
@@ -2104,11 +2057,9 @@
    * 18) RENDER ALL
    *****************************************************************/
   function renderAll() {
-    // ensure folder exists
     if (!FOLDERS.includes(state.ui.folder)) state.ui.folder = "J";
     if (!state.folders[state.ui.folder]) state.folders[state.ui.folder] = { cash: DEFAULT_CASH, holdings: {} };
 
-    // ensure every char has stock
     for (const ch of getAllCharacters()) ensureStock(ch.id);
 
     renderWanted();
@@ -2126,18 +2077,15 @@
   function boot() {
     domSanity();
 
-    // ensure folders exist (5,000 each)
     for (const f of FOLDERS) {
       if (!state.folders[f]) state.folders[f] = { cash: DEFAULT_CASH, holdings: {} };
       if (typeof state.folders[f].cash !== "number") state.folders[f].cash = DEFAULT_CASH;
       if (!state.folders[f].holdings || typeof state.folders[f].holdings !== "object") state.folders[f].holdings = {};
     }
 
-    // selected id safety
     const chars = getAllCharacters();
     if (!getCharById(state.ui.selectedId)) state.ui.selectedId = chars[0]?.id || "";
 
-    // bind
     bindNav();
     bindSim();
     bindModal();
@@ -2146,7 +2094,6 @@
 
     ensureFilterSelects();
 
-    // Start on whatever nav state says (but enforce lock)
     if (state.ui.nav === "edit" && !isAdminAuthed()) state.ui.nav = "market";
     showOnly(state.ui.nav);
 
@@ -2160,6 +2107,3 @@
     boot();
   }
 })();
-
-
-
