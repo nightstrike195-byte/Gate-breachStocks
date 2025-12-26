@@ -11,14 +11,25 @@
   const EDIT_PANEL_PASSWORD = "Raijin is a bitch"; // <- change this to whatever you want
   const EDIT_AUTH_KEY = "gb_edit_authed_v1";
 
+  // Persist across refreshes (localStorage). Falls back safely.
   function isEditAuthed(){
-    try{ return sessionStorage.getItem(EDIT_AUTH_KEY) === "1"; }catch{ return false; }
+    try{
+      return localStorage.getItem(EDIT_AUTH_KEY) === "1";
+    }catch{
+      try{ return sessionStorage.getItem(EDIT_AUTH_KEY) === "1"; }catch{ return false; }
+    }
   }
   function setEditAuthed(v){
-    try{ sessionStorage.setItem(EDIT_AUTH_KEY, v ? "1" : "0"); }catch{}
+    const val = v ? "1" : "0";
+    try{ localStorage.setItem(EDIT_AUTH_KEY, val); }catch{}
+    try{ sessionStorage.setItem(EDIT_AUTH_KEY, val); }catch{}
   }
+
   function requireEditAuth(){
-    if(isEditAuthed()) return true;
+    if(isEditAuthed()){
+      setEditPanelEnabled(true);
+      return true;
+    }
 
     const entered = prompt("Enter password to access the Edit panel:");
     if(entered === null) return false;
@@ -33,15 +44,19 @@
     setEditPanelEnabled(false);
     return false;
   }
+
   function setEditPanelEnabled(enabled){
     const panel = document.querySelector("#editPanel");
     if(!panel) return;
+
     const nodes = panel.querySelectorAll("input, textarea, select, button");
     nodes.forEach(n => {
-      // allow nav buttons to still work if they are inside edit panel (usually not)
+      // allow nav buttons / modal close if they happen to be inside editPanel
+      if(n && (n.closest?.("[data-nav]"))) return;
       if(n && n.id && /^closeModalBtn$/i.test(n.id)) return;
       n.disabled = !enabled;
     });
+
     panel.style.pointerEvents = enabled ? "" : "none";
     panel.style.filter = enabled ? "" : "grayscale(1)";
     panel.style.opacity = enabled ? "" : "0.75";
@@ -492,6 +507,29 @@
   // lock edit panel controls on boot until authed
   setEditPanelEnabled(isEditAuthed());
 
+  // EXTRA SAFETY: if editPanel becomes interactable by any other code, still gate it
+  attachEditPanelGuards();
+  function attachEditPanelGuards(){
+    if(!editPanel) return;
+
+    const block = (e) => {
+      if(isEditAuthed()) return;
+
+      // allow nav buttons to still work
+      const t = e.target;
+      if(t && (t.closest?.("[data-nav]"))) return;
+      if(t && t.id && /^closeModalBtn$/i.test(t.id)) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      requireEditAuth();
+    };
+
+    ["click","mousedown","keydown","focusin","input"].forEach(ev => {
+      editPanel.addEventListener(ev, block, true);
+    });
+  }
+
   /***********************
    * INIT SELECTS
    ***********************/
@@ -595,9 +633,6 @@
    * NAV
    ***********************/
   function setActivePanel(which){
-    // Your layout uses Market+Projects together visually, but you still wanted nav buttons.
-    // We'll do: market/projects show projectsPanel + marketPanel; edit shows editPanel.
-
     if(which === "edit"){
       // PASSWORD GATE
       const ok = requireEditAuth();
@@ -606,7 +641,7 @@
         if(editPanel) editPanel.style.display = "none";
         if(projectsPanel) projectsPanel.style.display = "";
         if(marketPanel) marketPanel.style.display = "";
-        navBtns.forEach(b => b.classList.toggle("active", b.dataset.nav !== "edit" && b.dataset.nav === "market"));
+        navBtns.forEach(b => b.classList.toggle("active", b.dataset.nav === "market"));
         return;
       }
 
@@ -624,7 +659,14 @@
   }
 
   navBtns.forEach(btn => {
-    btn.addEventListener("click", () => setActivePanel(btn.dataset.nav));
+    btn.addEventListener("click", (e) => {
+      // extra safety: if someone hard-shows edit panel, still gate here
+      if(btn.dataset.nav === "edit" && !isEditAuthed()){
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      setActivePanel(btn.dataset.nav);
+    });
   });
 
   // default
@@ -1035,12 +1077,12 @@
     switch(ui.sort){
       case "pop_desc": list.sort((a,b)=> b.popularity - a.popularity); break;
       case "pop_asc": list.sort((a,b)=> a.popularity - b.popularity); break;
-      case "oldest": list.sort((a,b)=> a.debutOrder - b.debutOrder); break;
+      case "oldest": list.sort((a,b)=> a.debutOrder - a.debutOrder); break;
       case "newest": list.sort((a,b)=> b.debutOrder - a.debutOrder); break;
       case "potential_desc": list.sort((a,b)=> b.potential - a.potential); break;
-      case "potential_asc": list.sort((a,b)=> a.potential - b.potential); break;
+      case "potential_asc": list.sort((a,b)=> a.potential - a.potential); break;
       case "price_desc": list.sort((a,b)=> b.points - a.points); break;
-      case "price_asc": list.sort((a,b)=> a.points - b.points); break;
+      case "price_asc": list.sort((a,b)=> a.points - a.points); break;
     }
 
     return list;
