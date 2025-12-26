@@ -8,7 +8,7 @@
   /*****************************************************************
    * 0) ADMIN PASSWORD (CHANGE THIS)
    *****************************************************************/
-  const ADMIN_PASSWORD = "CHANGE_THIS_PASSWORD"; // <-- change it
+  const ADMIN_PASSWORD = "Bumjin is inferior to kaien and he's also a bitch"; // <-- change it
   const ADMIN_AUTH_KEY = "gb_admin_authed_v1";
 
   /*****************************************************************
@@ -2160,3 +2160,4 @@
     boot();
   }
 })();
+
