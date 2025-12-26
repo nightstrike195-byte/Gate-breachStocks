@@ -6,60 +6,136 @@
   "use strict";
 
   /*****************************************************************
-   * 0) EDIT PANEL PASSWORD LOCK (CHANGE THIS PASSWORD)
+   * 0) EDIT + ADMIN PANEL PASSWORD LOCK (CHANGE THIS PASSWORD)
    *****************************************************************/
   const EDIT_PANEL_PASSWORD = "Raijin is a bitch"; // <- change this to whatever you want
   const EDIT_AUTH_KEY = "gb_edit_authed_v1";
 
-  // Persist across refreshes (localStorage). Falls back safely.
-  function isEditAuthed(){
-    try{
-      return localStorage.getItem(EDIT_AUTH_KEY) === "1";
-    }catch{
-      try{ return sessionStorage.getItem(EDIT_AUTH_KEY) === "1"; }catch{ return false; }
-    }
+  function isEditAuthed() {
+    try { return sessionStorage.getItem(EDIT_AUTH_KEY) === "1"; } catch { return false; }
   }
-  function setEditAuthed(v){
-    const val = v ? "1" : "0";
-    try{ localStorage.setItem(EDIT_AUTH_KEY, val); }catch{}
-    try{ sessionStorage.setItem(EDIT_AUTH_KEY, val); }catch{}
+  function setEditAuthed(v) {
+    try { sessionStorage.setItem(EDIT_AUTH_KEY, v ? "1" : "0"); } catch {}
   }
 
-  function requireEditAuth(){
-    if(isEditAuthed()){
+  // We inject lock/unlock buttons into the edit panel so you can always unlock again
+  function ensureEditLockUI() {
+    const panel = document.querySelector("#editPanel");
+    if (!panel) return;
+
+    if (panel.querySelector("#editUnlockBtn")) return; // already injected
+
+    const bar = document.createElement("div");
+    bar.id = "editLockBar";
+    bar.style.display = "flex";
+    bar.style.gap = "10px";
+    bar.style.alignItems = "center";
+    bar.style.justifyContent = "space-between";
+    bar.style.padding = "10px 12px";
+    bar.style.border = "1px solid rgba(255,255,255,.10)";
+    bar.style.borderRadius = "12px";
+    bar.style.marginBottom = "12px";
+    bar.style.background = "rgba(0,0,0,.18)";
+    bar.style.backdropFilter = "blur(10px)";
+
+    bar.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <div style="font-weight:700">Edit/Admin Lock</div>
+        <div id="editLockStatus" style="font-size:12px;opacity:.75">Status: —</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="editUnlockBtn" class="btn" type="button">Unlock</button>
+        <button id="editLockBtn" class="btn ghost" type="button">Lock</button>
+      </div>
+    `;
+
+    // Put it at the top of the edit panel
+    panel.prepend(bar);
+
+    const status = panel.querySelector("#editLockStatus");
+    const unlockBtn = panel.querySelector("#editUnlockBtn");
+    const lockBtn = panel.querySelector("#editLockBtn");
+
+    const refreshStatus = () => {
+      if (!status) return;
+      status.textContent = `Status: ${isEditAuthed() ? "UNLOCKED" : "LOCKED"}`;
+      status.style.color = isEditAuthed() ? "var(--good)" : "var(--bad)";
+    };
+
+    if (unlockBtn) {
+      unlockBtn.addEventListener("click", () => {
+        requireEditAuth(true);
+        refreshStatus();
+      });
+    }
+    if (lockBtn) {
+      lockBtn.addEventListener("click", () => {
+        setEditAuthed(false);
+        setEditPanelEnabled(false);
+        refreshStatus();
+      });
+    }
+
+    refreshStatus();
+  }
+
+  function setEditPanelEnabled(enabled) {
+    const panel = document.querySelector("#editPanel");
+    if (!panel) return;
+
+    // IMPORTANT: do NOT disable our unlock/lock controls
+    const allowIds = new Set(["editUnlockBtn", "editLockBtn", "closeModalBtn"]);
+
+    const nodes = panel.querySelectorAll("input, textarea, select, button");
+    nodes.forEach(n => {
+      if (!n) return;
+      if (n.id && allowIds.has(n.id)) return;
+      n.disabled = !enabled;
+    });
+
+    // Keep panel visible but "locked" feel
+    panel.style.pointerEvents = enabled ? "" : "auto"; // allow clicking Unlock button
+    panel.style.filter = enabled ? "" : "grayscale(1)";
+    panel.style.opacity = enabled ? "" : "0.85";
+  }
+
+  function requireEditAuth(fromButton = false) {
+    if (isEditAuthed()) {
       setEditPanelEnabled(true);
       return true;
     }
 
-    const entered = prompt("Enter password to access the Edit panel:");
-    if(entered === null) return false;
+    // Ensure lock UI exists before we prompt (so you never "lose" admin again)
+    ensureEditLockUI();
+    setEditPanelEnabled(false);
 
-    if(String(entered) === String(EDIT_PANEL_PASSWORD)){
+    // Prompt must happen from a user action (click) to avoid browser blocking
+    const entered = prompt("Enter password to unlock the Edit/Admin panel:");
+    if (entered === null) return false;
+
+    if (String(entered) === String(EDIT_PANEL_PASSWORD)) {
       setEditAuthed(true);
       setEditPanelEnabled(true);
+
+      // Update status text if present
+      const st = document.querySelector("#editLockStatus");
+      if (st) {
+        st.textContent = "Status: UNLOCKED";
+        st.style.color = "var(--good)";
+      }
       return true;
     }
 
     alert("Wrong password.");
+    setEditAuthed(false);
     setEditPanelEnabled(false);
+
+    const st = document.querySelector("#editLockStatus");
+    if (st) {
+      st.textContent = "Status: LOCKED";
+      st.style.color = "var(--bad)";
+    }
     return false;
-  }
-
-  function setEditPanelEnabled(enabled){
-    const panel = document.querySelector("#editPanel");
-    if(!panel) return;
-
-    const nodes = panel.querySelectorAll("input, textarea, select, button");
-    nodes.forEach(n => {
-      // allow nav buttons / modal close if they happen to be inside editPanel
-      if(n && (n.closest?.("[data-nav]"))) return;
-      if(n && n.id && /^closeModalBtn$/i.test(n.id)) return;
-      n.disabled = !enabled;
-    });
-
-    panel.style.pointerEvents = enabled ? "" : "none";
-    panel.style.filter = enabled ? "" : "grayscale(1)";
-    panel.style.opacity = enabled ? "" : "0.75";
   }
 
   /*****************************************************************
@@ -355,9 +431,9 @@
     PORT: "gb_portfolio_ui_v10",
     UI: "gb_ui_state_v10",
     WANTED: "gb_wanted_v10",
-    EDIT_MEDIA: "gb_entity_media_v10",      // image/link edits
-    ADMIN: "gb_admin_state_v10",            // caps/frozen/volMult
-    PICKS: "gb_bulk_picks_v10",             // multi-buy selected ids
+    EDIT_MEDIA: "gb_entity_media_v10",
+    ADMIN: "gb_admin_state_v10",
+    PICKS: "gb_bulk_picks_v10",
   };
 
   const MAX_HISTORY = 90;
@@ -504,31 +580,9 @@
   const addCharBtn = $("#addCharBtn");
   const removeCharBtn = $("#removeCharBtn");
 
-  // lock edit panel controls on boot until authed
+  // Make sure lock UI exists and the edit/admin panel starts locked unless already authed
+  ensureEditLockUI();
   setEditPanelEnabled(isEditAuthed());
-
-  // EXTRA SAFETY: if editPanel becomes interactable by any other code, still gate it
-  attachEditPanelGuards();
-  function attachEditPanelGuards(){
-    if(!editPanel) return;
-
-    const block = (e) => {
-      if(isEditAuthed()) return;
-
-      // allow nav buttons to still work
-      const t = e.target;
-      if(t && (t.closest?.("[data-nav]"))) return;
-      if(t && t.id && /^closeModalBtn$/i.test(t.id)) return;
-
-      e.preventDefault();
-      e.stopPropagation();
-      requireEditAuth();
-    };
-
-    ["click","mousedown","keydown","focusin","input"].forEach(ev => {
-      editPanel.addEventListener(ev, block, true);
-    });
-  }
 
   /***********************
    * INIT SELECTS
@@ -545,7 +599,6 @@
   if(speedSelect) speedSelect.value = String(ui.speedMs ?? 500);
 
   if(globalVol){
-    // default if empty
     const stored = loadJSON("gb_global_vol_v10", 1);
     globalVol.value = String(clamp(num(stored, 1), 0.1, 10));
   }
@@ -558,8 +611,6 @@
 
   function injectBulkBar(){
     if(!marketPanel) return;
-
-    // avoid duplicates
     if($("#bulkBar")) return;
 
     const wrap = document.createElement("div");
@@ -615,7 +666,7 @@
           picksSet.add(c.id);
         }
         updateCount();
-        renderProjects(); // refresh checkboxes
+        renderProjects();
       });
     }
     if(bulkSelectNoneBtn){
@@ -630,14 +681,25 @@
   }
 
   /***********************
-   * NAV
+   * NAV (FIXED: edit/admin always prompts + admin panel stays)
    ***********************/
   function setActivePanel(which){
-    if(which === "edit"){
+    // Support either data-nav="edit" OR data-nav="admin"
+    const isEditLike = (which === "edit" || which === "admin");
+
+    if(isEditLike){
+      // show edit panel first so prompt + unlock UI always exists
+      if(editPanel) editPanel.style.display = "";
+      if(projectsPanel) projectsPanel.style.display = "none";
+      if(marketPanel) marketPanel.style.display = "none";
+
+      ensureEditLockUI();
+      setEditPanelEnabled(isEditAuthed());
+
       // PASSWORD GATE
-      const ok = requireEditAuth();
+      const ok = requireEditAuth(false);
       if(!ok){
-        // stay on market view
+        // If they cancel / wrong password, stay on market
         if(editPanel) editPanel.style.display = "none";
         if(projectsPanel) projectsPanel.style.display = "";
         if(marketPanel) marketPanel.style.display = "";
@@ -645,11 +707,9 @@
         return;
       }
 
-      if(editPanel) editPanel.style.display = "";
-      if(projectsPanel) projectsPanel.style.display = "none";
-      if(marketPanel) marketPanel.style.display = "none";
+      // unlocked
       setEditPanelEnabled(true);
-    }else{
+    } else {
       if(editPanel) editPanel.style.display = "none";
       if(projectsPanel) projectsPanel.style.display = "";
       if(marketPanel) marketPanel.style.display = "";
@@ -659,14 +719,7 @@
   }
 
   navBtns.forEach(btn => {
-    btn.addEventListener("click", (e) => {
-      // extra safety: if someone hard-shows edit panel, still gate here
-      if(btn.dataset.nav === "edit" && !isEditAuthed()){
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      setActivePanel(btn.dataset.nav);
-    });
+    btn.addEventListener("click", () => setActivePanel(btn.dataset.nav));
   });
 
   // default
@@ -755,7 +808,6 @@
       const o = mediaOverrides[id] || {};
       if(editImg) editImg.value = o.image || "";
       if(editLink) editLink.value = o.link || "";
-      // also sync admin controls to selected
       syncAdminFormTo(id);
     };
 
@@ -813,7 +865,6 @@
       });
     }
 
-    // keep select list updated if you add/remove characters
     market._refreshEditSelect = refreshSelect;
   }
 
@@ -831,7 +882,6 @@
   }
 
   if(editCharSelect){
-    // initial sync
     syncAdminFormTo(editCharSelect.value);
   }
 
@@ -853,13 +903,11 @@
       c.frozen = frozenV;
       c.volMult = volV;
 
-      // keep history consistent
       c.history = Array.isArray(c.history) ? c.history.slice(-MAX_HISTORY) : [];
       if(!c.history.length) c.history = seedHistory(c.points);
       c.history.push(c.points);
       if(c.history.length > MAX_HISTORY) c.history.shift();
 
-      // persist adminState
       adminState[id] = { cap: c.cap, frozen: c.frozen, volMult: c.volMult };
       saveJSON(LS.ADMIN, adminState);
 
@@ -902,7 +950,6 @@
       const impact = clamp(num(newImpact?.value, 300), 1, 1000);
 
       const debut = (market.list.reduce((m,c)=> Math.max(m, num(c.debutOrder, 0)), 0) + 1);
-
       const basePrice = clamp(Math.round((pop*0.35 + pot*0.45 + impact*0.20) / 2), 1, 1000);
 
       const c = mk(id, name, type, arcs, debut, pop, pot, basePrice);
@@ -917,11 +964,9 @@
       market.list.push(c);
       market.byId[c.id] = c;
 
-      // refresh index + persist
       updateIndex();
       saveJSON(LS.MARKET, market);
 
-      // refresh edit select
       market._refreshEditSelect && market._refreshEditSelect();
       if(editCharSelect){
         editCharSelect.value = id;
@@ -940,11 +985,9 @@
       const exists = market.byId[id];
       if(!exists) return;
 
-      // remove from market
       market.list = market.list.filter(x => x.id !== id);
       delete market.byId[id];
 
-      // remove holdings + picks + overrides + admin
       delete portfolio.positions?.[id];
       picksSet.delete(id);
       delete mediaOverrides[id];
@@ -954,18 +997,15 @@
       saveJSON(LS.EDIT_MEDIA, mediaOverrides);
       saveJSON(LS.ADMIN, adminState);
 
-      // wanted fallback
       if(wantedId === id){
         wantedId = market.list[0]?.id || null;
         saveJSON(LS.WANTED, wantedId);
       }
 
-      // refresh index
       updateIndex();
       saveJSON(LS.MARKET, market);
       saveJSON(LS.PORT, portfolio);
 
-      // refresh edit select
       market._refreshEditSelect && market._refreshEditSelect();
 
       renderAll();
@@ -1000,7 +1040,6 @@
     if(!ids.length) return;
     qtyEach = clamp(num(qtyEach, 1), 1, 999);
 
-    // buy in order, stop if money runs out
     for(const id of ids){
       const c = market.byId[id];
       if(!c) continue;
@@ -1039,7 +1078,6 @@
     saveJSON(LS.MARKET, market);
     saveJSON(LS.PORT, portfolio);
 
-    // bulk count
     const bulkCount = $("#bulkCount");
     if(bulkCount) bulkCount.textContent = String(picksSet.size);
   }
@@ -1077,12 +1115,12 @@
     switch(ui.sort){
       case "pop_desc": list.sort((a,b)=> b.popularity - a.popularity); break;
       case "pop_asc": list.sort((a,b)=> a.popularity - b.popularity); break;
-      case "oldest": list.sort((a,b)=> a.debutOrder - a.debutOrder); break;
+      case "oldest": list.sort((a,b)=> a.debutOrder - b.debutOrder); break;
       case "newest": list.sort((a,b)=> b.debutOrder - a.debutOrder); break;
       case "potential_desc": list.sort((a,b)=> b.potential - a.potential); break;
-      case "potential_asc": list.sort((a,b)=> a.potential - a.potential); break;
+      case "potential_asc": list.sort((a,b)=> a.potential - b.potential); break;
       case "price_desc": list.sort((a,b)=> b.points - a.points); break;
-      case "price_asc": list.sort((a,b)=> a.points - a.points); break;
+      case "price_asc": list.sort((a,b)=> a.points - b.points); break;
     }
 
     return list;
@@ -1147,7 +1185,6 @@
       </div>
     `;
 
-    // checkbox selection
     const cb = el.querySelector(".pickBox input");
     if(cb){
       cb.addEventListener("click", (e) => {
@@ -1177,20 +1214,17 @@
       });
     }
 
-    // single click selects wanted
     el.addEventListener("click", () => {
       wantedId = c.id;
       saveJSON(LS.WANTED, wantedId);
       renderWanted();
 
-      // sync admin forms too
       if(editCharSelect){
         editCharSelect.value = c.id;
         editCharSelect.dispatchEvent(new Event("change"));
       }
     });
 
-    // double click opens modal
     el.addEventListener("dblclick", () => openDetailModal(c.id));
 
     return el;
@@ -1357,7 +1391,7 @@
   }
 
   /***********************
-   * SIMULATION (respects: frozen, cap, volMult, globalVol)
+   * SIMULATION
    ***********************/
   function startSim(){
     if(simTimer) return;
@@ -1387,7 +1421,6 @@
   function marketTick(){
     market.day = num(market.day, 0) + 1;
 
-    // surge types more often
     const r = Math.random();
     let eventType = null;
     if(r < 0.10) eventType = "zodiac";
@@ -1399,7 +1432,6 @@
     for(const c of market.list){
       const cap = clamp(num(c.cap, 1000), 1, 1000);
 
-      // stagnate/freeze = no movement
       if(c.frozen){
         c.lastDelta = 0;
         c.points = clamp(num(c.points, 300), 1, cap);
@@ -1412,7 +1444,6 @@
 
       const volMult = clamp(num(c.volMult, 1), 0.1, 10);
 
-      // volatility: bigger swings overall
       const vol = (1.25 + (1000 - c.popularity) / 220) * gVol * volMult;
       const bias = (c.potential - 500) / 180;
 
@@ -1450,7 +1481,7 @@
   function randFloat(a,b){ return Math.random()*(b-a)+a; }
 
   /***********************
-   * TRADING (respects cap; bumps don't move frozen stocks)
+   * TRADING
    ***********************/
   function buy(id, shares){
     const c = market.byId[id];
@@ -1498,7 +1529,6 @@
 
     const cap = clamp(num(c.cap, 1000), 1, 1000);
 
-    // stagnate = no bump
     if(c.frozen){
       c.lastDelta = 0;
       c.points = clamp(num(c.points, 300), 1, cap);
@@ -1553,7 +1583,6 @@
     if(modalBackdrop) modalBackdrop.classList.remove("hidden");
     if(detailModal) detailModal.classList.remove("hidden");
 
-    // sync admin when modal opened
     if(editCharSelect){
       editCharSelect.value = id;
       editCharSelect.dispatchEvent(new Event("change"));
@@ -1587,7 +1616,7 @@
   }
 
   /***********************
-   * MEDIA LOOKUP (global entityMedia + local overrides)
+   * MEDIA LOOKUP
    ***********************/
   function getImage(c){
     try{
