@@ -4,15 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
+  <title>GATE//BREACH — Stock Market</title>
 
-  <title>GATE//BREACH — Market</title>
-
-  <!-- ===============================
-       GITHUB PAGES–SAFE ASSET PATHS
-       =============================== -->
+  <!-- CSS (case-sensitive, GitHub Pages safe) -->
   <link rel="stylesheet" href="/Gate-breachStocks/Style.CSS" />
 
-  <!-- Fallback check: proves CSS loaded -->
+  <!-- Fallback if CSS fails -->
   <style>
     html:not([data-css-loaded]) body::before{
       content:"CSS FAILED TO LOAD";
@@ -30,207 +27,196 @@
 
 <body>
 
-  <!-- ===============================
-       TOP BAR
-       =============================== -->
-  <header class="topbar">
-    <div class="topLeft">
-      <div class="brandPill">
-        <div class="brandDot"></div>
-        <div>
-          <div class="brandText">GATE//BREACH</div>
-          <div class="brandSub">Stock Market</div>
-        </div>
-      </div>
-
-      <div class="navPills">
-        <button class="pill active" data-nav="market">Market</button>
-        <button class="pill" data-nav="edit">Edit</button>
-      </div>
+<!-- ================= TOP BAR ================= -->
+<header class="topbar">
+  <div class="topLeft">
+    <div class="brandPill">
+      <span class="brandDot"></span>
+      <span class="brandText">GATE//BREACH</span>
+      <span class="brandSub">Stock Market</span>
     </div>
 
-    <div class="topRight">
-      <div class="statLine">
-        <span class="statLabel">Day</span>
-        <span id="dayEl" class="statValue">0</span>
-      </div>
-      <div class="statLine">
-        <span class="statLabel">Balance</span>
-        <span id="balanceEl" class="statValue">0</span>
-      </div>
-      <div class="statLine">
-        <span class="statLabel">Net Worth</span>
-        <span id="netWorthEl" class="statValue">0</span>
-      </div>
-    </div>
-  </header>
-
-  <!-- ===============================
-       MAIN LAYOUT
-       =============================== -->
-  <main class="shell">
-
-    <!-- LEFT COLUMN -->
-    <aside class="leftCol">
-
-      <!-- WANTED -->
-      <section class="panel wanted">
-        <div class="wantedHeader">WANTED</div>
-        <div class="wantedPoster">
-          <div class="wantedImageWrap">
-            <img id="wantedImg" alt="Wanted" />
-          </div>
-          <div class="wantedName" id="wantedName">—</div>
-          <div class="wantedRole" id="wantedRole">—</div>
-
-          <div class="wantedStats">
-            <div class="wsRow">Price <b id="wantedPrice">0</b></div>
-            <div class="wsRow">Owned <b id="wantedOwned">0</b></div>
-            <div class="wsRow">Popularity <b id="wantedPop">0</b></div>
-            <div class="wsRow">Potential <b id="wantedPot">0</b></div>
-            <div class="wsRow">Cap <b id="wantedCap">0</b></div>
-            <div class="wsRow">Status <b id="wantedFrozen">LIVE</b></div>
-          </div>
-
-          <div class="wantedBtns">
-            <button id="wantedBuyBtn" class="btn buy">BUY</button>
-            <button id="wantedSellBtn" class="btn sell">SELL</button>
-          </div>
-
-          <a id="wantedLinkBtn" class="btn full linkBtn" target="_blank">OPEN LINK</a>
-        </div>
-      </section>
-
-      <!-- PORTFOLIO -->
-      <section class="panel portfolio">
-        <h3 class="panelTitle">Portfolio</h3>
-
-        <div class="miniKPIs">
-          <div class="kpi">
-            <div class="kpiLabel">Positions</div>
-            <div class="kpiValue" id="positionsCount">0</div>
-          </div>
-          <div class="kpi">
-            <div class="kpiLabel">Δ Net Worth</div>
-            <div class="kpiValue" id="nwDeltaEl">0</div>
-          </div>
-        </div>
-
-        <div class="miniChart">
-          <canvas id="netWorthChart" width="300" height="120"></canvas>
-        </div>
-
-        <div class="portfolioList" id="portfolioList"></div>
-      </section>
-    </aside>
-
-    <!-- MAIN COLUMN -->
-    <section class="mainCol">
-
-      <!-- FILTERS -->
-      <div class="panel filterBar">
-        <div class="filterRow">
-          <input id="searchInput" class="input search" placeholder="Search…" />
-          <select id="arcSelect" class="select"></select>
-          <select id="typeSelect" class="select">
-            <option value="all">All Types</option>
-          </select>
-          <select id="sortSelect" class="select">
-            <option value="pop_desc">Popularity ↓</option>
-            <option value="pop_asc">Popularity ↑</option>
-            <option value="price_desc">Price ↓</option>
-            <option value="price_asc">Price ↑</option>
-          </select>
-          <div class="resultCount" id="resultCount">0 results</div>
-        </div>
-      </div>
-
-      <!-- PROJECTS -->
-      <div class="panel projects" id="projectsPanel">
-        <div class="projectsHead">
-          <div class="projectsTitle">Market</div>
-          <div class="projectsHint">Click = select • Double-click = details</div>
-        </div>
-        <div class="projectsGrid" id="projectsGrid"></div>
-      </div>
-
-      <!-- EDIT PANEL -->
-      <div class="panel edit hidden" id="editPanel">
-        <h3 class="panelTitle">Edit Panel (Locked)</h3>
-
-        <label class="label">Character</label>
-        <select id="editCharSelect" class="select"></select>
-
-        <div class="editGrid">
-          <div>
-            <label class="label">Image URL</label>
-            <input id="editImg" class="input" />
-          </div>
-          <div>
-            <label class="label">Link URL</label>
-            <input id="editLink" class="input" />
-          </div>
-        </div>
-
-        <div class="editBtns">
-          <button id="saveEditBtn" class="btn buy">Save</button>
-          <button id="resetEditBtn" class="btn ghost">Reset</button>
-        </div>
-      </div>
-
-    </section>
-  </main>
-
-  <!-- MODAL -->
-  <div id="modalBackdrop" class="modalBackdrop hidden"></div>
-  <div id="detailModal" class="modal hidden">
-    <div class="modalHead">
-      <div>
-        <div id="modalName" class="modalTitle">—</div>
-        <div id="modalMeta" class="modalSub">—</div>
-      </div>
-      <button id="closeModalBtn" class="btn ghost">✕</button>
-    </div>
-
-    <div class="modalBody">
-      <div class="bigImgWrap">
-        <img id="modalImg" class="bigImg" />
-      </div>
-
-      <div>
-        <div class="chartCard">
-          <canvas id="spark" width="400" height="180"></canvas>
-        </div>
-
-        <div class="modalActions">
-          <button id="modalBuyBtn" class="btn buy">BUY</button>
-          <button id="modalSellBtn" class="btn sell">SELL</button>
-          <a id="modalLinkBtn" class="btn ghost" target="_blank">OPEN LINK</a>
-        </div>
-
-        <div class="historyCard">
-          <div class="chartTitle">Recent Activity</div>
-          <div id="historyList" class="historyList"></div>
-        </div>
-      </div>
+    <div class="navPills">
+      <button class="pill active" data-nav="market">Market</button>
+      <button class="pill" data-nav="projects">Projects</button>
+      <button class="pill" data-nav="edit">Edit</button>
     </div>
   </div>
 
-  <!-- ===============================
-       JAVASCRIPT (PROJECT-SAFE)
-       =============================== -->
-  <script src="/Gate-breachStocks/app.js" defer></script>
-
-  <!-- CSS loaded flag -->
-  <script>
-    document.documentElement.setAttribute("data-css-loaded","1");
-  </script>
-
-  <noscript>
-    <div style="padding:16px;color:#fff;background:#000;">
-      JavaScript is required for this site.
+  <div class="topRight">
+    <div class="statLine">
+      <span class="statLabel">Day</span>
+      <span id="dayEl" class="statValue">0</span>
     </div>
-  </noscript>
+    <div class="statLine">
+      <span class="statLabel">Balance</span>
+      <span id="balanceEl" class="statValue">0</span>
+    </div>
+    <div class="statLine">
+      <span class="statLabel">Net</span>
+      <span id="netWorthEl" class="statValue">0</span>
+    </div>
+  </div>
+</header>
+
+<!-- ================= MAIN ================= -->
+<main class="shell">
+
+  <!-- ===== LEFT COLUMN ===== -->
+  <aside class="leftCol">
+
+    <!-- WANTED -->
+    <section class="panel wanted" id="wantedPanel">
+      <div class="wantedHeader">WANTED</div>
+      <div class="wantedPoster">
+        <div class="wantedImageWrap">
+          <img id="wantedImg" alt="" />
+        </div>
+        <div class="wantedName" id="wantedName">—</div>
+        <div class="wantedRole" id="wantedRole">—</div>
+
+        <div class="wantedStats">
+          <div class="wsRow"><span>Price</span><b id="wantedPrice">0</b></div>
+          <div class="wsRow"><span>Owned</span><b id="wantedOwned">0</b></div>
+          <div class="wsRow"><span>Popularity</span><b id="wantedPop">0</b></div>
+          <div class="wsRow"><span>Potential</span><b id="wantedPot">0</b></div>
+          <div class="wsRow"><span>Cap</span><b id="wantedCap">1000</b></div>
+          <div class="wsRow"><span>Status</span><b id="wantedFrozen">LIVE</b></div>
+        </div>
+
+        <div class="wantedBtns">
+          <button id="wantedBuyBtn" class="btn buy">BUY</button>
+          <button id="wantedSellBtn" class="btn sell">SELL</button>
+        </div>
+
+        <a id="wantedLinkBtn" class="btn ghost" target="_blank">Open Dossier</a>
+      </div>
+    </section>
+
+    <!-- PORTFOLIO -->
+    <section class="panel portfolio">
+      <div class="panelTitle">Portfolio</div>
+
+      <div class="miniKPIs">
+        <div class="kpi">
+          <div class="kpiLabel">Positions</div>
+          <div id="positionsCount" class="kpiValue">0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpiLabel">Holdings</div>
+          <div id="holdingsValue" class="kpiValue">0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpiLabel">Cash</div>
+          <div id="cashValue" class="kpiValue">0</div>
+        </div>
+      </div>
+
+      <div id="positionsList" class="positionsList"></div>
+      <button id="resetAllBtn" class="btn ghost full">Reset Portfolio</button>
+    </section>
+
+    <!-- WATCH + SIM -->
+    <section class="panel watch">
+      <div class="watchHeader">
+        <div class="watchTitle">Top Movers</div>
+      </div>
+
+      <div class="watchCols">
+        <div>
+          <div class="watchSub">Gainers</div>
+          <div id="gainersList" class="watchList"></div>
+        </div>
+        <div>
+          <div class="watchSub">Losers</div>
+          <div id="losersList" class="watchList"></div>
+        </div>
+      </div>
+
+      <div class="simBox">
+        <button id="playBtn" class="btn ghost">Play</button>
+        <button id="pauseBtn" class="btn ghost">Pause</button>
+        <button id="step1Btn" class="btn ghost">+1</button>
+        <button id="step10Btn" class="btn ghost">+10</button>
+
+        <select id="speedSelect" class="select full">
+          <option value="1000">1x</option>
+          <option value="500">2x</option>
+          <option value="250">4x</option>
+        </select>
+
+        <input id="globalVol" class="input" type="number" value="1" step="0.1" />
+      </div>
+    </section>
+  </aside>
+
+  <!-- ===== RIGHT COLUMN ===== -->
+  <section class="rightCol">
+
+    <!-- MARKET -->
+    <section class="panel market" id="marketPanel">
+      <div class="panelHead">
+        <div class="panelTitle">Market</div>
+      </div>
+
+      <div class="filters">
+        <input id="searchInput" class="input" placeholder="Search" />
+        <select id="arcSelect" class="select"></select>
+        <select id="typeSelect" class="select"></select>
+        <select id="sortSelect" class="select"></select>
+        <div id="resultCount" class="resultCount">0</div>
+      </div>
+
+      <div id="marketGrid" class="marketGrid"></div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section class="panel projects" id="projectsPanel">
+      <div id="projectsGrid" class="projectsGrid"></div>
+    </section>
+
+    <!-- EDIT -->
+    <section class="panel edit" id="editPanel">
+      <select id="editCharSelect" class="select full"></select>
+      <input id="editImg" class="input" />
+      <input id="editLink" class="input" />
+      <textarea id="bulkJson" class="textarea"></textarea>
+      <button id="saveEditBtn" class="btn ghost">Save</button>
+      <button id="resetEditBtn" class="btn ghost">Reset</button>
+      <button id="applyBulkBtn" class="btn ghost">Apply Bulk</button>
+    </section>
+
+  </section>
+</main>
+
+<!-- ===== MODAL (REQUIRED BY JS) ===== -->
+<div id="modalBackdrop" class="modalBackdrop hidden"></div>
+
+<div id="detailModal" class="modal hidden">
+  <button id="closeModalBtn" class="btn ghost">Close</button>
+  <img id="modalImg" />
+  <div id="modalTitle"></div>
+  <div id="modalSub"></div>
+  <div id="modalPrice"></div>
+  <div id="modalOwned"></div>
+  <div id="modalPotential"></div>
+  <div id="modalPop"></div>
+  <div id="modalCap"></div>
+  <div id="modalFrozen"></div>
+  <canvas id="spark" width="720" height="220"></canvas>
+  <div id="historyList"></div>
+  <button id="modalBuyBtn" class="btn buy">Buy</button>
+  <button id="modalSellBtn" class="btn sell">Sell</button>
+  <a id="modalLinkBtn" target="_blank">Link</a>
+</div>
+
+<!-- JS -->
+<script src="/Gate-breachStocks/app.js" defer></script>
+<script>document.documentElement.dataset.cssLoaded="1"</script>
+
+<noscript>
+  <div class="noscript">JavaScript is required.</div>
+</noscript>
 
 </body>
 </html>
