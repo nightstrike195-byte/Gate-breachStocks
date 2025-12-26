@@ -1,0 +1,756 @@
+/* ===========================
+   FILE NAME MUST BE: Style.CSS
+   =========================== */
+/* Make project cards more compact */
+.card {
+  font-size: 12px;
+}
+
+.cardBody {
+  padding: 6px 8px;
+}
+
+.cardTop {
+  aspect-ratio: 16 / 9;
+}
+
+
+:root{
+  --cssLoaded: 1;
+
+  --bg0:#061123;
+  --bg1:#081a33;
+  --panel: rgba(0,0,0,.28);
+  --panel2: rgba(0,0,0,.38);
+  --stroke: rgba(255,255,255,.14);
+  --stroke2: rgba(255,255,255,.10);
+  --text:#eaf2ff;
+  --muted: rgba(234,242,255,.65);
+
+  --good:#62f3b6;
+  --bad:#ff6b7a;
+  --gold:#f3d27b;
+
+  /* ↓ global scale (20–30% smaller) */
+  --uiScale: .78;
+
+  /* scaled sizing */
+  --r: calc(16px * var(--uiScale));
+  --shadow: 0 calc(14px * var(--uiScale)) calc(40px * var(--uiScale)) rgba(0,0,0,.35);
+
+  --pad10: calc(10px * var(--uiScale));
+  --pad12: calc(12px * var(--uiScale));
+  --pad14: calc(14px * var(--uiScale));
+  --pad16: calc(16px * var(--uiScale));
+  --gap8:  calc(8px  * var(--uiScale));
+  --gap10: calc(10px * var(--uiScale));
+  --gap12: calc(12px * var(--uiScale));
+  --gap14: calc(14px * var(--uiScale));
+
+  --fs11: calc(11px * var(--uiScale));
+  --fs12: calc(12px * var(--uiScale));
+  --fs14: calc(14px * var(--uiScale));
+  --fs16: calc(16px * var(--uiScale));
+  --fs18: calc(18px * var(--uiScale));
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+
+/* Make text smaller without breaking component math */
+html{font-size: calc(16px * var(--uiScale));}
+
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:
+    radial-gradient(900px 600px at 20% -10%, rgba(98,243,182,.10), transparent 60%),
+    radial-gradient(900px 600px at 90% 10%, rgba(243,210,123,.10), transparent 60%),
+    linear-gradient(180deg, var(--bg0), #040a16);
+  color:var(--text);
+}
+
+/* Topbar */
+.topbar{
+  position:sticky; top:0; z-index:50;
+  display:flex; align-items:center; justify-content:space-between;
+  padding: var(--pad14) var(--pad16);
+  border-bottom:1px solid var(--stroke);
+  background: rgba(6,17,35,.78);
+  backdrop-filter: blur(14px);
+}
+.topLeft{display:flex; align-items:center; gap:var(--gap12); flex-wrap:wrap}
+.brandPill{
+  display:flex; align-items:center; gap:var(--gap10);
+  padding: calc(8px * var(--uiScale)) calc(12px * var(--uiScale));
+  border:1px solid var(--stroke);
+  border-radius:999px;
+  background: rgba(0,0,0,.20);
+}
+.brandDot{
+  width:calc(10px * var(--uiScale));
+  height:calc(10px * var(--uiScale));
+  border-radius:50%;
+  background: var(--good);
+  box-shadow: 0 0 0 calc(4px * var(--uiScale)) rgba(98,243,182,.12);
+}
+.brandText{font-weight:900; letter-spacing:.5px}
+.brandSub{opacity:.75; font-weight:700; font-size:var(--fs12)}
+
+.navPills{display:flex; gap:var(--gap8); flex-wrap:wrap}
+.pill{
+  border:1px solid var(--stroke);
+  background: rgba(0,0,0,.18);
+  color:var(--text);
+  padding: calc(8px * var(--uiScale)) calc(12px * var(--uiScale));
+  border-radius:999px;
+  font-weight:900;
+  cursor:pointer;
+}
+.pill:hover{filter:brightness(1.06)}
+.pill.active{
+  border-color: rgba(243,210,123,.35);
+  background: rgba(243,210,123,.10);
+}
+
+.topRight{display:flex; gap:var(--gap14); flex-wrap:wrap; align-items:center}
+.statLine{display:flex; gap:var(--gap8); align-items:baseline}
+.statLabel{opacity:.7; font-size:var(--fs12); font-weight:900}
+.statValue{font-weight:900}
+
+/* Layout */
+.shell{
+  display:grid;
+  grid-template-columns: calc(360px * var(--uiScale)) 1fr; /* ↓ smaller left column */
+  gap: var(--gap14);
+  padding: var(--pad14);
+}
+@media (max-width: 980px){
+  .shell{grid-template-columns:1fr}
+}
+.leftCol{display:flex; flex-direction:column; gap:var(--gap14)}
+.mainCol{display:flex; flex-direction:column; gap:var(--gap14)}
+
+/* Panels */
+.panel{
+  border:1px solid var(--stroke);
+  background: var(--panel);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+}
+.panelTitle{
+  font-weight:1000;
+  letter-spacing:.3px;
+  margin:0;
+  padding: var(--pad12) var(--pad14) 0 var(--pad14);
+}
+.hint{padding: calc(8px * var(--uiScale)) var(--pad14) 0 var(--pad14); color:var(--muted); font-size:var(--fs12)}
+.hint.small{font-size:var(--fs11)}
+.label{
+  display:block;
+  font-size:var(--fs12);
+  font-weight:900;
+  color: rgba(234,242,255,.78);
+  margin: calc(10px * var(--uiScale)) 0 calc(6px * var(--uiScale));
+}
+.input,.select,.textarea{
+  width:100%;
+  padding: var(--pad10) var(--pad12);
+  border-radius: calc(12px * var(--uiScale));
+  border:1px solid var(--stroke2);
+  background: rgba(0,0,0,.25);
+  color:var(--text);
+  outline:none;
+}
+.input:focus,.select:focus,.textarea:focus{
+  border-color: rgba(243,210,123,.35);
+  box-shadow: 0 0 0 calc(4px * var(--uiScale)) rgba(243,210,123,.10);
+}
+.textarea{min-height: calc(110px * var(--uiScale)); resize:vertical}
+
+/* Buttons */
+.btn{
+  border:1px solid var(--stroke);
+  background: rgba(0,0,0,.22);
+  color:var(--text);
+  padding: var(--pad10) var(--pad12);
+  border-radius: calc(12px * var(--uiScale));
+  font-weight:1000;
+  cursor:pointer;
+  user-select:none;
+}
+.btn:hover{filter:brightness(1.06)}
+.btn:disabled{opacity:.5; cursor:not-allowed}
+.btn.full{width:100%}
+.btn.ghost{background: rgba(0,0,0,.14)}
+.btn.buy{
+  border-color: rgba(98,243,182,.25);
+  background: rgba(98,243,182,.10);
+}
+.btn.sell{
+  border-color: rgba(255,107,122,.25);
+  background: rgba(255,107,122,.10);
+}
+.linkBtn, a.btn{
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:var(--gap8);
+}
+
+/* WANTED */
+.wanted{overflow:hidden}
+.wantedHeader{
+  padding: var(--pad12) var(--pad14);
+  font-weight:1000;
+  letter-spacing:.2em;
+  color: rgba(243,210,123,.95);
+  border-bottom:1px solid var(--stroke);
+  background: rgba(0,0,0,.18);
+}
+.wantedPoster{padding: var(--pad12) var(--pad14) var(--pad14)}
+.wantedImageWrap{
+  width:100%;
+  aspect-ratio: 1 / 1;
+  border-radius: calc(14px * var(--uiScale));
+  overflow:hidden;
+  border:1px solid var(--stroke);
+  background: rgba(0,0,0,.25);
+}
+#wantedImg{width:100%; height:100%; object-fit:cover; display:block}
+.wantedName{margin-top: calc(10px * var(--uiScale)); font-weight:1000; font-size:var(--fs18)}
+.wantedRole{margin-top:2px; color:var(--muted); font-weight:900; font-size:var(--fs12); letter-spacing:.08em}
+.wantedStats{margin-top: calc(10px * var(--uiScale)); display:flex; flex-direction:column; gap: calc(6px * var(--uiScale))}
+.wsRow{display:flex; justify-content:space-between; gap:var(--gap10); font-size:var(--fs12); color: rgba(234,242,255,.84)}
+.wsRow b{color:var(--text)}
+.wantedBtns{display:flex; gap:var(--gap10); margin-top: var(--pad12)}
+.wantedBtns .btn{flex:1}
+
+/* Portfolio */
+.portfolio{padding-bottom: var(--pad12)}
+.miniKPIs{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:var(--gap10);
+  padding: var(--pad10) var(--pad14) 0 var(--pad14);
+}
+.kpi{
+  border:1px solid var(--stroke2);
+  border-radius: calc(14px * var(--uiScale));
+  padding: var(--pad10);
+  background: rgba(0,0,0,.20);
+}
+.kpiLabel{color:var(--muted); font-size:var(--fs11); font-weight:900}
+.kpiValue{font-weight:1000; margin-top: calc(4px * var(--uiScale))}
+.miniChart{padding: var(--pad10) var(--pad14)}
+.portfolioList{padding:0 var(--pad14) var(--pad10) var(--pad14); display:flex; flex-direction:column; gap:var(--gap8)}
+.posRow{
+  display:flex; align-items:center; justify-content:space-between;
+  border:1px solid var(--stroke2);
+  background: rgba(0,0,0,.18);
+  border-radius: calc(14px * var(--uiScale));
+  padding: var(--pad10);
+}
+.posName{font-weight:1000}
+.posMeta{font-size:var(--fs12); color:var(--muted); margin-top:2px}
+.posValue{font-weight:1000}
+
+/* Filter bar */
+.filterBar{padding: var(--pad12) var(--pad14)}
+.filterRow{
+  display:grid;
+  grid-template-columns: 1.4fr .8fr .8fr .9fr auto;
+  gap:var(--gap10);
+  align-items:center;
+}
+@media (max-width: 980px){
+  .filterRow{grid-template-columns: 1fr 1fr; }
+}
+.input.search{min-width: calc(220px * var(--uiScale))}
+.resultCount{font-size:var(--fs12); color:var(--muted); font-weight:900}
+
+/* Bulk bar (injected by JS) */
+.bulkBar{
+  margin-top: var(--pad10);
+  display:flex;
+  gap:var(--gap10);
+  align-items:center;
+  flex-wrap:wrap;
+  padding: var(--pad10);
+  border:1px solid var(--stroke2);
+  border-radius: calc(14px * var(--uiScale));
+  background: rgba(0,0,0,.18);
+}
+.bulkBar .bulkLeft{display:flex; gap:var(--gap10); align-items:center; flex-wrap:wrap}
+.bulkBar .bulkRight{margin-left:auto; display:flex; gap:var(--gap10); flex-wrap:wrap}
+.bulkBar .bulkCount{font-size:var(--fs12); color:var(--muted); font-weight:900}
+.qtyMini{
+  width: calc(110px * var(--uiScale));
+  display:flex;
+  align-items:center;
+  gap:var(--gap8);
+}
+.qtyMini label{font-size:var(--fs12); color:var(--muted); font-weight:900}
+#qtyInput{width: calc(88px * var(--uiScale)); padding: var(--pad10)}
+
+/* Board */
+.board{padding: var(--pad12) var(--pad14)}
+.boardHead{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:var(--gap10); flex-wrap:wrap;
+}
+.boardTitle{font-weight:1000; font-size:var(--fs16)}
+.boardMeta{display:flex; gap:var(--gap14); color:var(--muted); font-size:var(--fs12); font-weight:900}
+.boardMeta b{color:var(--text)}
+.boardGrid{
+  margin-top: var(--pad12);
+  display:grid;
+  grid-template-columns: 1fr calc(340px * var(--uiScale)) calc(340px * var(--uiScale));
+  gap:var(--gap12);
+}
+@media (max-width: 1200px){
+  .boardGrid{grid-template-columns:1fr}
+}
+.indexBox, .watchBox, .simBox{
+  border:1px solid var(--stroke2);
+  border-radius: calc(14px * var(--uiScale));
+  background: rgba(0,0,0,.18);
+  padding: var(--pad12);
+}
+.watchTitle{font-weight:1000}
+.watchCols{display:grid; grid-template-columns:1fr 1fr; gap:var(--gap12); margin-top: var(--pad10)}
+.watchSub{font-weight:1000; font-size:var(--fs12); color:var(--muted); margin-bottom: var(--gap8)}
+.watchList{display:flex; flex-direction:column; gap:var(--gap8)}
+.watchRow{
+  display:flex; justify-content:space-between; align-items:center;
+  border:1px solid var(--stroke2);
+  border-radius: calc(12px * var(--uiScale));
+  padding: calc(8px * var(--uiScale)) var(--pad10);
+  background: rgba(0,0,0,.20);
+  cursor:pointer;
+}
+.watchRow:hover{filter:brightness(1.06)}
+.watchName{font-weight:900; font-size:var(--fs12)}
+.watchDelta{font-weight:1000; font-size:var(--fs12)}
+.watchDelta.good{color:var(--good)}
+.watchDelta.bad{color:var(--bad)}
+.simRow{display:flex; gap:var(--gap10); margin-top: var(--pad10)}
+.select.full{width:100%}
+.simNote{margin-top: var(--pad10); font-size:var(--fs12); color:var(--muted)}
+
+/* Projects grid */
+.projects{padding: var(--pad10) var(--pad14) var(--pad14)}
+.projectsHead{
+  display:flex; justify-content:space-between; align-items:baseline;
+  gap:var(--gap10); flex-wrap:wrap;
+  padding: calc(2px * var(--uiScale)) 0 var(--pad10);
+}
+.projectsTitle{font-weight:1000}
+.projectsHint{font-size:var(--fs12); color:var(--muted); font-weight:900}
+.projectsGrid{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap:var(--gap12);
+}
+@media (max-width: 1200px){
+  .projectsGrid{grid-template-columns: repeat(3, minmax(0, 1fr))}
+}
+@media (max-width: 900px){
+  .projectsGrid{grid-template-columns: repeat(2, minmax(0, 1fr))}
+}
+@media (max-width: 520px){
+  .projectsGrid{grid-template-columns: 1fr}
+}
+
+/* Card */
+.card{
+  border:1px solid var(--stroke2);
+  border-radius: var(--r);
+  background: rgba(0,0,0,.18);
+  overflow:hidden;
+  cursor:pointer;
+  position:relative;
+}
+.card:hover{filter:brightness(1.04)}
+.cardTop{
+  position:relative;
+  width:100%;
+  aspect-ratio: 16 / 10;
+  background: rgba(0,0,0,.22);
+}
+.cardImg{width:100%; height:100%; object-fit:cover; display:block}
+.cardDivider{height:1px; background: rgba(255,255,255,.08)}
+.cardBody{padding: var(--pad10) var(--pad10) var(--pad12)}
+.cardRow{display:flex; justify-content:space-between; gap:var(--gap10)}
+.cardName{font-weight:1000; font-size:var(--fs14)}
+.cardPrice{font-weight:1000; margin-top: calc(4px * var(--uiScale))}
+.cardOwned{font-size:var(--fs12); color:var(--muted); margin-top: calc(4px * var(--uiScale)); font-weight:900}
+.ticker{font-weight:1000; font-size:var(--fs12); opacity:.9}
+.delta{font-weight:1000; font-size:var(--fs12); margin-top: calc(4px * var(--uiScale))}
+.delta.good{color:var(--good)}
+.delta.bad{color:var(--bad)}
+.cardBtns{display:flex; gap:var(--gap10); margin-top: var(--pad10)}
+.cardBtns .btn{flex:1}
+
+/* Card selection checkbox */
+.pickBox{
+  position:absolute;
+  top: calc(10px * var(--uiScale));
+  right: calc(10px * var(--uiScale));
+  display:flex; align-items:center; gap:var(--gap8);
+  padding: calc(6px * var(--uiScale)) calc(10px * var(--uiScale));
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.16);
+  background: rgba(0,0,0,.35);
+  backdrop-filter: blur(10px);
+}
+.pickBox input{width: calc(16px * var(--uiScale)); height: calc(16px * var(--uiScale)); accent-color: var(--gold)}
+.pickBox span{font-size:var(--fs12); font-weight:1000; color: rgba(234,242,255,.9)}
+.card.selected{
+  outline: calc(2px * var(--uiScale)) solid rgba(243,210,123,.45);
+  box-shadow: 0 0 0 calc(6px * var(--uiScale)) rgba(243,210,123,.10), var(--shadow);
+}
+
+/* Edit panel + Admin */
+.edit{padding: var(--pad12) var(--pad14) var(--pad14)}
+.editGrid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:var(--gap12);
+  margin-top: var(--pad10);
+}
+@media (max-width: 980px){
+  .editGrid{grid-template-columns:1fr}
+}
+.editBtns{display:flex; gap:var(--gap10); margin-top: var(--pad10)}
+.twoCol{display:grid; grid-template-columns:1fr 1fr; gap:var(--gap10)}
+.adminWrap{margin-top: var(--pad14)}
+.adminGrid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:var(--gap12);
+  margin-top: var(--pad10);
+}
+@media (max-width: 980px){
+  .adminGrid{grid-template-columns:1fr}
+}
+.adminCard{
+  border:1px solid var(--stroke2);
+  border-radius: calc(14px * var(--uiScale));
+  background: rgba(0,0,0,.18);
+  padding: var(--pad12);
+}
+.adminTitle{font-weight:1000; margin-bottom: var(--gap8)}
+.adminBtns{display:flex; flex-direction:column; gap:var(--gap10); margin-top: var(--pad10)}
+
+/* Modal */
+.modalBackdrop{
+  position:fixed; inset:0;
+  background: rgba(0,0,0,.65);
+  backdrop-filter: blur(6px);
+  z-index:80;
+}
+.modal{
+  position:fixed;
+  left:50%; top:50%;
+  transform: translate(-50%,-50%);
+  width:min(1060px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow:auto;
+  z-index:90;
+}
+.hidden{display:none !important}
+.modalHead{
+  display:flex; align-items:center; justify-content:space-between;
+  padding: var(--pad12) var(--pad14);
+  border-bottom:1px solid var(--stroke);
+  background: rgba(0,0,0,.25);
+}
+.modalTitle{font-weight:1000; font-size:var(--fs18)}
+.modalSub{font-size:var(--fs12); color:var(--muted); font-weight:900; margin-top:2px}
+.modalBody{
+  display:grid;
+  grid-template-columns: calc(360px * var(--uiScale)) 1fr;
+  gap:var(--gap12);
+  padding: var(--pad12);
+}
+@media (max-width: 980px){
+  .modalBody{grid-template-columns:1fr}
+}
+.bigImgWrap{
+  width:100%;
+  aspect-ratio: 1 / 1;
+  border-radius: calc(14px * var(--uiScale));
+  overflow:hidden;
+  border:1px solid var(--stroke);
+  background: rgba(0,0,0,.25);
+}
+.bigImg{width:100%; height:100%; object-fit:cover; display:block}
+.modalActions{display:flex; gap:var(--gap10); flex-wrap:wrap; margin-top: var(--pad10)}
+.chartCard,.historyCard{
+  border:1px solid var(--stroke2);
+  border-radius: calc(14px * var(--uiScale));
+  background: rgba(0,0,0,.18);
+  padding: var(--pad12);
+}
+.chartTop{display:flex; justify-content:space-between; gap:var(--gap10); flex-wrap:wrap; align-items:baseline}
+.chartTitle{font-weight:1000}
+.chartKpis{
+  display:flex; flex-wrap:wrap; gap:var(--gap10);
+  font-size:var(--fs12); color:var(--muted); font-weight:900;
+}
+.chartKpis b{color:var(--text)}
+.historyList{display:flex; flex-direction:column; gap:var(--gap8); margin-top: var(--pad10)}
+.hRow{
+  display:flex; justify-content:space-between; align-items:center;
+  border:1px solid var(--stroke2);
+  border-radius: calc(12px * var(--uiScale));
+  padding: calc(8px * var(--uiScale)) var(--pad10);
+  background: rgba(0,0,0,.20);
+  font-size:var(--fs12);
+}
+
+/* Boot banner kept from HTML fallback (works regardless) */
+/* =========================================================
+   CARD DOWNSIZE PATCH (≈60% smaller)
+   Paste at the END of Style.CSS
+   ========================================================= */
+
+/* Projects grid: smaller tiles, tighter gaps */
+.projects{padding:8px 10px 10px}
+.projectsHead{padding:2px 0 8px}
+.projectsHint{font-size:10px}
+
+.projectsGrid{
+  display:grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap:8px;
+}
+
+@media (max-width: 1200px){
+  .projectsGrid{grid-template-columns: repeat(5, minmax(0, 1fr))}
+}
+@media (max-width: 980px){
+  .projectsGrid{grid-template-columns: repeat(4, minmax(0, 1fr))}
+}
+@media (max-width: 720px){
+  .projectsGrid{grid-template-columns: repeat(3, minmax(0, 1fr))}
+}
+@media (max-width: 520px){
+  .projectsGrid{grid-template-columns: repeat(2, minmax(0, 1fr))}
+}
+
+/* Card container smaller */
+.card{
+  border-radius: 10px;
+}
+
+/* Card image shorter (less “tall” feeling) */
+.cardTop{
+  aspect-ratio: 16 / 9;
+}
+
+/* Card inner spacing smaller */
+.cardBody{
+  padding:6px 6px 7px;
+}
+
+.cardRow{
+  gap:6px;
+}
+
+/* Fonts smaller */
+.cardName{
+  font-size:11px;
+  line-height:1.15;
+}
+.cardPrice{
+  font-size:11px;
+  margin-top:2px;
+}
+.cardOwned{
+  font-size:10px;
+  margin-top:2px;
+}
+.ticker{
+  font-size:10px;
+}
+.delta{
+  font-size:10px;
+  margin-top:2px;
+}
+
+/* Sparkline smaller */
+.cardSpark{
+  height:38px;
+}
+
+/* Buttons smaller */
+.cardBtns{
+  gap:6px;
+  margin-top:6px;
+}
+.cardBtns .btn{
+  padding:6px 8px;
+  border-radius:10px;
+  font-size:10px;
+  font-weight:900;
+}
+
+/* Optional: shrink the selection pill if you use it */
+.pickBox{
+  top:6px; right:6px;
+  padding:4px 8px;
+}
+.pickBox input{width:12px; height:12px}
+.pickBox span{font-size:10px}
+/* =========================================================
+   FINAL FIX: 3 columns + smaller cards
+   Paste at the VERY END of Style.css
+   ========================================================= */
+
+/* 3 cards per row on desktop, 2 on tablets, 1 on phones */
+.projectsGrid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap:10px;
+}
+@media (max-width: 900px){
+  .projectsGrid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px){
+  .projectsGrid{ grid-template-columns: 1fr; }
+}
+
+/* Make cards smaller (without breaking layout) */
+.card{
+  border-radius:10px;
+}
+.cardTop{
+  aspect-ratio: 16 / 9;
+}
+.cardBody{
+  padding:6px 8px;
+}
+.cardName{
+  font-size:12px;
+  line-height:1.15;
+}
+.ticker,
+.cardOwned,
+.delta{
+  font-size:10px;
+}
+.cardPrice{
+  font-size:11px;
+  margin-top:2px;
+}
+.cardBtns{
+  gap:6px;
+  margin-top:6px;
+}
+.cardBtns .btn{
+  padding:6px 8px;
+  border-radius:10px;
+  font-size:10px;
+}
+.pickBox{
+  top:6px; right:6px;
+  padding:4px 8px;
+}
+.pickBox input{ width:12px; height:12px; }
+.pickBox span{ font-size:10px; }
+/* =========================================================
+   OVERSIZE FIX: compact cards like your reference image
+   Paste at the VERY END of Style.css
+   ========================================================= */
+
+/* More cards per row (desktop), responsive down */
+.projectsGrid{
+  grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+@media (max-width: 1400px){
+  .projectsGrid{ grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 1100px){
+  .projectsGrid{ grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 820px){
+  .projectsGrid{ grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 520px){
+  .projectsGrid{ grid-template-columns: 1fr !important; }
+}
+
+/* Compact card shell */
+.card{
+  border-radius: 12px !important;
+  font-size: 12px !important;
+}
+
+/* Make the image area short (stops “giant” feel) */
+.cardTop{
+  aspect-ratio: auto !important;
+  height: 88px !important;          /* adjust 80–110 if you want */
+  overflow: hidden !important;
+}
+.cardImg{
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+/* Tighten spacing + text */
+.cardBody{
+  padding: 8px 10px 10px !important;
+}
+.cardRow{
+  gap: 8px !important;
+}
+.cardName{
+  font-size: 13px !important;
+  line-height: 1.1 !important;
+}
+.cardPrice{
+  font-size: 12px !important;
+  margin-top: 2px !important;
+}
+.cardOwned,
+.ticker,
+.delta{
+  font-size: 11px !important;
+  margin-top: 2px !important;
+}
+
+/* Sparkline smaller */
+.cardSpark{
+  height: 34px !important;
+}
+
+/* Buttons smaller */
+.cardBtns{
+  gap: 8px !important;
+  margin-top: 8px !important;
+}
+.cardBtns .btn{
+  padding: 7px 10px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+}
+
+/* Select pill smaller */
+.pickBox{
+  top: 6px !important;
+  right: 6px !important;
+  padding: 4px 8px !important;
+}
+.pickBox input{
+  width: 12px !important;
+  height: 12px !important;
+}
+.pickBox span{
+  font-size: 10px !important;
+}
