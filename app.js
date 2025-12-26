@@ -8,8 +8,8 @@
   /*****************************************************************
    * 0) ADMIN PASSWORD (CHANGE THIS)
    *****************************************************************/
-  const EDIT_PANEL_PASSWORD = "CHANGE_THIS_PASSWORD"; // <-- change it
-  const EDIT_AUTH_KEY = "gb_edit_authed_v2";
+  const ADMIN_PASSWORD = "CHANGE_THIS_PASSWORD"; // <-- change it
+  const ADMIN_AUTH_KEY = "gb_admin_authed_v1";
 
   /*****************************************************************
    * 1) YOUR entityMedia (AS PROVIDED)
@@ -209,13 +209,15 @@
   /*****************************************************************
    * 3) HELPERS
    *****************************************************************/
-  const $ = (sel, root = document) => root.querySelector(sel);
+  const $ = (id) => document.getElementById(id);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
   const nnum = (v, fallback = 0) => {
     const x = Number(v);
     return Number.isFinite(x) ? x : fallback;
   };
+
   const safeUrl = (u) => {
     if (!u) return "";
     try {
@@ -227,822 +229,2102 @@
     }
   };
 
-  function isEditAuthed(){
-    try { return sessionStorage.getItem(EDIT_AUTH_KEY) === "1"; } catch { return false; }
+  const money = (n) => Math.round(nnum(n, 0)).toLocaleString("en-US");
+
+  function isAdminAuthed(){
+    try { return sessionStorage.getItem(ADMIN_AUTH_KEY) === "1"; } catch { return false; }
   }
-  function setEditAuthed(v){
-    try { sessionStorage.setItem(EDIT_AUTH_KEY, v ? "1" : "0"); } catch {}
+  function setAdminAuthed(v){
+    try { sessionStorage.setItem(ADMIN_AUTH_KEY, v ? "1" : "0"); } catch {}
   }
 
-  /*****************************************************************
-   * 4) STORAGE
-   *****************************************************************/
-  const KEY_STATE = "gbx_state_v5"; // bump to avoid old broken states
-
-  function loadJSON(k, fallback){
+  function loadJSON(key, fallback){
     try{
-      const raw = localStorage.getItem(k);
+      const raw = localStorage.getItem(key);
       if (!raw) return fallback;
       return JSON.parse(raw);
     } catch {
       return fallback;
     }
   }
-  function saveJSON(k, v){
-    try{ localStorage.setItem(k, JSON.stringify(v)); } catch {}
+  function saveJSON(key, value){
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
   }
 
   /*****************************************************************
-   * 5) GAME STATE
+   * 4) STATE + DEFAULTS
    *****************************************************************/
-  const FOLDERS = ["J","M","B","K","R"];
-  const DEFAULT_POINTS = 5000;
+  const KEY_STATE = "gb_state_ui_v1";
+  const KEY_MEDIA_OVERRIDES = "gb_media_overrides_v1";
+  const KEY_CUSTOM_CHARS = "gb_custom_chars_v1";
 
-  function defaultStockForChar(ch){
+  const DEFAULT_CASH = 5000;
+
+  function defaultStockFor(ch){
     const base = nnum(ch.base, 100);
     const min = nnum(ch.min, Math.max(1, base * 0.7));
     const max = nnum(ch.max, base * 1.3);
-    const init = clamp(base, min, max);
+    const price = clamp(base, min, max);
+    const cap = Math.max(max * 2, price);
+    const hist = Array.from({ length: 24 }, () => price);
     return {
-      id: ch.id,
-      price: init,
-      volatility: 1.0,      // 0 = no movement
-      capMax: max * 2,      // absolute max this stock can reach
-      stagnated: false
+      price,
+      prev: price,
+      vol: 1,
+      cap,
+      frozen: false,
+      hist
     };
   }
 
-  const DEFAULT_STATE = {
-    version: 5,
-    ui: { tab: "Market", folder: "J", selectedId: BASE_CHARACTERS[0]?.id || "" },
-    folders: Object.fromEntries(FOLDERS.map(f => [f, { points: DEFAULT_POINTS }])),
-    stocks: Object.fromEntries(BASE_CHARACTERS.map(ch => [ch.id, defaultStockForChar(ch)])),
-  };
-
   const state = (() => {
-    const s = loadJSON(KEY_STATE, null);
-    if (!s || typeof s !== "object") return structuredClone(DEFAULT_STATE);
+    const saved = loadJSON(KEY_STATE, null);
+    const savedCustom = loadJSON(KEY_CUSTOM_CHARS, []);
+    const customChars = Array.isArray(savedCustom) ? savedCustom.filter(x => x && typeof x.id === "string") : [];
 
-    // soft-migrate: ensure everyone exists
-    const merged = structuredClone(DEFAULT_STATE);
+    const base = {
+      version: 1,
+      ui: {
+        view: "market",              // market | projects | edit
+        selectedId: BASE_CHARACTERS[0]?.id || "",
+        search: "",
+        arc: "all",
+        type: "all",
+        sort: "default",
+        mode: "mono",                // mono | bulk
+        bulkQty: 1,
+        bulkSelected: []
+      },
+      sim: {
+        day: 0,
+        running: false,
+        speedMs: 1000,
+        globalVol: 1
+      },
+      wallet: {
+        cash: DEFAULT_CASH,
+        holdings: {}                 // id -> qty
+      },
+      stocks: {},                    // id -> stock obj
+      customChars
+    };
 
-    // keep UI if present
+    // Merge
+    const s = (saved && typeof saved === "object") ? saved : {};
+    const merged = base;
+
+    // ui
     if (s.ui && typeof s.ui === "object") {
-      merged.ui.tab = typeof s.ui.tab === "string" ? s.ui.tab : merged.ui.tab;
-      merged.ui.folder = typeof s.ui.folder === "string" ? s.ui.folder : merged.ui.folder;
+      merged.ui.view = typeof s.ui.view === "string" ? s.ui.view : merged.ui.view;
       merged.ui.selectedId = typeof s.ui.selectedId === "string" ? s.ui.selectedId : merged.ui.selectedId;
+      merged.ui.search = typeof s.ui.search === "string" ? s.ui.search : merged.ui.search;
+      merged.ui.arc = typeof s.ui.arc === "string" ? s.ui.arc : merged.ui.arc;
+      merged.ui.type = typeof s.ui.type === "string" ? s.ui.type : merged.ui.type;
+      merged.ui.sort = typeof s.ui.sort === "string" ? s.ui.sort : merged.ui.sort;
+      merged.ui.mode = (s.ui.mode === "bulk") ? "bulk" : "mono";
+      merged.ui.bulkQty = clamp(nnum(s.ui.bulkQty, 1), 1, 1e9);
+      merged.ui.bulkSelected = Array.isArray(s.ui.bulkSelected) ? s.ui.bulkSelected.filter(x => typeof x === "string") : [];
     }
 
-    // folders
-    if (s.folders && typeof s.folders === "object") {
-      for (const f of FOLDERS) {
-        const pts = nnum(s.folders?.[f]?.points, merged.folders[f].points);
-        merged.folders[f].points = pts;
-      }
+    // sim
+    if (s.sim && typeof s.sim === "object") {
+      merged.sim.day = Math.max(0, Math.floor(nnum(s.sim.day, merged.sim.day)));
+      merged.sim.running = !!s.sim.running;
+      merged.sim.speedMs = clamp(nnum(s.sim.speedMs, merged.sim.speedMs), 80, 60000);
+      merged.sim.globalVol = clamp(nnum(s.sim.globalVol, merged.sim.globalVol), 0, 1000);
     }
 
-    // stocks: take saved, but ensure all characters exist
-    if (s.stocks && typeof s.stocks === "object") {
-      for (const ch of BASE_CHARACTERS) {
-        const def = merged.stocks[ch.id];
-        const old = s.stocks[ch.id];
-        if (old && typeof old === "object") {
-          def.price = clamp(nnum(old.price, def.price), 0, 1e12);
-          def.volatility = clamp(nnum(old.volatility, def.volatility), 0, 1000);
-          def.capMax = Math.max(0, nnum(old.capMax, def.capMax));
-          def.stagnated = !!old.stagnated;
-        }
-        // also ensure capMax at least current price
-        def.capMax = Math.max(def.capMax, def.price);
-        merged.stocks[ch.id] = def;
-      }
+    // wallet
+    if (s.wallet && typeof s.wallet === "object") {
+      merged.wallet.cash = Math.max(0, nnum(s.wallet.cash, merged.wallet.cash));
+      merged.wallet.holdings = (s.wallet.holdings && typeof s.wallet.holdings === "object") ? s.wallet.holdings : merged.wallet.holdings;
     }
+
+    // stocks (will be normalized after we build character list)
+    merged.stocks = (s.stocks && typeof s.stocks === "object") ? s.stocks : {};
 
     return merged;
   })();
 
   function persist(){
     saveJSON(KEY_STATE, state);
+    saveJSON(KEY_CUSTOM_CHARS, state.customChars || []);
   }
 
   /*****************************************************************
-   * 6) UI INJECTION (so it won't depend on your HTML)
+   * 5) CHARACTER LIST (BASE + CUSTOM)
    *****************************************************************/
-  function injectStyles(){
-    const css = `
-      :root { color-scheme: dark; }
-      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-      #gb-app { padding: 14px; max-width: 1200px; margin: 0 auto; }
-      .gb-top { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
-      .gb-title { font-weight: 800; letter-spacing: .5px; font-size: 18px; }
-      .gb-tabs { display:flex; gap:8px; flex-wrap:wrap; }
-      .gb-tab { border:1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.06); color: #fff; padding: 8px 10px; border-radius: 10px; cursor:pointer; user-select:none; }
-      .gb-tab[aria-current="true"] { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.30); }
-      .gb-panel { margin-top: 12px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); border-radius: 14px; padding: 12px; }
-      .gb-row { display:flex; gap:12px; flex-wrap:wrap; }
-      .gb-card { width: 260px; border:1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.25); border-radius: 14px; overflow:hidden; }
-      .gb-card img { width:100%; height:160px; object-fit:cover; display:block; background: rgba(255,255,255,.06); }
-      .gb-card .pad { padding: 10px; }
-      .gb-card h3 { margin: 0 0 6px; font-size: 14px; }
-      .gb-meta { opacity:.85; font-size: 12px; }
-      .gb-price { margin-top: 8px; display:flex; justify-content:space-between; font-weight:700; }
-      .gb-btn { border:1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.08); color:#fff; padding:8px 10px; border-radius: 10px; cursor:pointer; }
-      .gb-btn:active { transform: translateY(1px); }
-      .gb-grid { display:flex; flex-wrap:wrap; gap: 12px; }
-      .gb-kv { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-      .gb-kv b { font-weight:800; }
-      .gb-select, .gb-input { border:1px solid rgba(255,255,255,.16); background: rgba(0,0,0,.35); color:#fff; padding: 8px 10px; border-radius: 10px; }
-      .gb-modal-back { position:fixed; inset:0; background: rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding: 16px; z-index: 9999; }
-      .gb-modal { width:min(520px, 100%); border:1px solid rgba(255,255,255,.18); background: rgba(15,15,18,.95); border-radius: 14px; padding: 12px; }
-      .gb-modal h2 { margin: 0 0 8px; font-size: 16px; }
-      .gb-modal p { margin: 0 0 10px; opacity:.9; }
-      .gb-divider { height:1px; background: rgba(255,255,255,.10); margin: 10px 0; }
-      .gb-small { font-size: 12px; opacity:.85; }
-      a.gb-link { color: inherit; text-decoration: none; }
-      a.gb-link:hover { text-decoration: underline; }
-    `;
-    const style = document.createElement("style");
-    style.textContent = css;
-    document.head.appendChild(style);
-  }
+  function getAllCharacters(){
+    const customs = Array.isArray(state.customChars) ? state.customChars : [];
+    const cleaned = [];
+    const seen = new Set(BASE_CHARACTERS.map(c => c.id));
 
-  function ensureRoot(){
-    let root = document.getElementById("gb-app");
-    if (!root) {
-      root = document.createElement("div");
-      root.id = "gb-app";
-      document.body.appendChild(root);
+    for (const c of customs) {
+      if (!c || typeof c !== "object") continue;
+      const id = String(c.id || "").trim();
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      cleaned.push(mk(
+        id,
+        String(c.name || id),
+        String(c.type || "custom"),
+        Array.isArray(c.tags) ? c.tags : [],
+        nnum(c.stock, 0),
+        nnum(c.min, 0),
+        nnum(c.max, 0),
+        nnum(c.base, 100)
+      ));
     }
-    return root;
+
+    return BASE_CHARACTERS.concat(cleaned);
   }
 
-  /*****************************************************************
-   * 7) STOCK ENGINE
-   *****************************************************************/
-  function tickStocks(){
-    // simple random walk with volatility; stagnated means frozen
-    for (const ch of BASE_CHARACTERS) {
-      const st = state.stocks[ch.id];
-      if (!st) continue;
+  function normalizeStocks(allChars){
+    // ensure holdings keys are numbers
+    if (!state.wallet.holdings || typeof state.wallet.holdings !== "object") state.wallet.holdings = {};
+    for (const k of Object.keys(state.wallet.holdings)) {
+      const v = Math.max(0, Math.floor(nnum(state.wallet.holdings[k], 0)));
+      if (!v) delete state.wallet.holdings[k];
+      else state.wallet.holdings[k] = v;
+    }
 
-      if (st.stagnated || st.volatility <= 0) continue;
+    // normalize stocks per character
+    if (!state.stocks || typeof state.stocks !== "object") state.stocks = {};
+    for (const ch of allChars) {
+      const cur = state.stocks[ch.id];
+      if (!cur || typeof cur !== "object") {
+        state.stocks[ch.id] = defaultStockFor(ch);
+        continue;
+      }
+      const def = defaultStockFor(ch);
+      def.price = Math.max(0, nnum(cur.price, def.price));
+      def.prev = Math.max(0, nnum(cur.prev, def.price));
+      def.vol = clamp(nnum(cur.vol, def.vol), 0, 1000);
+      def.cap = Math.max(def.price, nnum(cur.cap, def.cap));
+      def.frozen = !!cur.frozen;
+      def.hist = Array.isArray(cur.hist) ? cur.hist.map(x => Math.max(0, nnum(x, def.price))).slice(-60) : def.hist;
+      if (def.hist.length < 8) def.hist = Array.from({ length: 24 }, () => def.price);
+      state.stocks[ch.id] = def;
+    }
 
-      const v = nnum(st.volatility, 1);
-      // movement scale: based on current price but gentle
-      const scale = Math.max(1, st.price * 0.006) * v;
-      const delta = (Math.random() - 0.5) * 2 * scale;
+    // prune stocks for removed customs
+    const validIds = new Set(allChars.map(c => c.id));
+    for (const id of Object.keys(state.stocks)) {
+      if (!validIds.has(id)) delete state.stocks[id];
+    }
+    for (const id of Object.keys(state.wallet.holdings)) {
+      if (!validIds.has(id)) delete state.wallet.holdings[id];
+    }
 
-      let next = st.price + delta;
-      next = Math.max(0, next);
-      next = Math.min(next, st.capMax);
-      st.price = next;
+    // ensure selectedId exists
+    if (!validIds.has(state.ui.selectedId)) {
+      state.ui.selectedId = allChars[0]?.id || "";
     }
   }
 
   /*****************************************************************
-   * 8) RENDERING
+   * 6) MEDIA OVERRIDES (EDIT PANEL)
    *****************************************************************/
-  let root, modalBack;
+  let mediaOverrides = (() => {
+    const o = loadJSON(KEY_MEDIA_OVERRIDES, {});
+    return (o && typeof o === "object") ? o : {};
+  })();
 
-  function setTab(name){
-    state.ui.tab = name;
+  function saveMediaOverrides(){
+    saveJSON(KEY_MEDIA_OVERRIDES, mediaOverrides);
+  }
+
+  function getMediaFor(id){
+    const ov = mediaOverrides[id];
+    const base = entityMedia[id] || {};
+    const image = safeUrl((ov && ov.image) || base.image || "");
+    const link = safeUrl((ov && ov.link) || base.link || "");
+    return { image, link };
+  }
+
+  /*****************************************************************
+   * 7) DOM REFERENCES (HTML IS FIXED)
+   *****************************************************************/
+  const el = {
+    // nav + panels
+    pills: () => $$(".pill[data-nav]"),
+    marketPanel: $("marketPanel"),
+    projectsPanel: $("projectsPanel"),
+    editPanel: $("editPanel"),
+
+    // top stats
+    dayEl: $("dayEl"),
+    balanceEl: $("balanceEl"),
+    netWorthEl: $("netWorthEl"),
+
+    // wanted
+    wantedImg: $("wantedImg"),
+    wantedName: $("wantedName"),
+    wantedRole: $("wantedRole"),
+    wantedPrice: $("wantedPrice"),
+    wantedOwned: $("wantedOwned"),
+    wantedPop: $("wantedPop"),
+    wantedPot: $("wantedPot"),
+    wantedCap: $("wantedCap"),
+    wantedFrozen: $("wantedFrozen"),
+    wantedBuyBtn: $("wantedBuyBtn"),
+    wantedSellBtn: $("wantedSellBtn"),
+    wantedLinkBtn: $("wantedLinkBtn"),
+
+    // portfolio
+    positionsCount: $("positionsCount"),
+    holdingsValue: $("holdingsValue"),
+    cashValue: $("cashValue"),
+    positionsList: $("positionsList"),
+    resetAllBtn: $("resetAllBtn"),
+
+    // watch
+    gainersList: $("gainersList"),
+    losersList: $("losersList"),
+
+    // sim
+    playBtn: $("playBtn"),
+    pauseBtn: $("pauseBtn"),
+    step1Btn: $("step1Btn"),
+    step10Btn: $("step10Btn"),
+    speedSelect: $("speedSelect"),
+    globalVol: $("globalVol"),
+
+    // market filters/grid
+    searchInput: $("searchInput"),
+    arcSelect: $("arcSelect"),
+    typeSelect: $("typeSelect"),
+    sortSelect: $("sortSelect"),
+    resultCount: $("resultCount"),
+    marketGrid: $("marketGrid"),
+
+    // projects grid
+    projectsGrid: $("projectsGrid"),
+
+    // edit panel (base)
+    editCharSelect: $("editCharSelect"),
+    editImg: $("editImg"),
+    editLink: $("editLink"),
+    bulkJson: $("bulkJson"),
+    saveEditBtn: $("saveEditBtn"),
+    resetEditBtn: $("resetEditBtn"),
+    applyBulkBtn: $("applyBulkBtn"),
+
+    // modal
+    modalBackdrop: $("modalBackdrop"),
+    detailModal: $("detailModal"),
+    closeModalBtn: $("closeModalBtn"),
+    modalImg: $("modalImg"),
+    modalTitle: $("modalTitle"),
+    modalSub: $("modalSub"),
+    modalPrice: $("modalPrice"),
+    modalOwned: $("modalOwned"),
+    modalPotential: $("modalPotential"),
+    modalPop: $("modalPop"),
+    modalCap: $("modalCap"),
+    modalFrozen: $("modalFrozen"),
+    spark: $("spark"),
+    historyList: $("historyList"),
+    modalBuyBtn: $("modalBuyBtn"),
+    modalSellBtn: $("modalSellBtn"),
+    modalLinkBtn: $("modalLinkBtn"),
+  };
+
+  /*****************************************************************
+   * 8) NOTIFY (small toast)
+   *****************************************************************/
+  let toastTimer = null;
+  function notify(msg){
+    try{
+      let box = document.getElementById("gbToast");
+      if (!box) {
+        box = document.createElement("div");
+        box.id = "gbToast";
+        box.style.position = "fixed";
+        box.style.left = "50%";
+        box.style.bottom = "18px";
+        box.style.transform = "translateX(-50%)";
+        box.style.padding = "10px 12px";
+        box.style.border = "1px solid rgba(255,255,255,.18)";
+        box.style.borderRadius = "12px";
+        box.style.background = "rgba(0,0,0,.55)";
+        box.style.backdropFilter = "blur(10px)";
+        box.style.color = "#eaf2ff";
+        box.style.fontWeight = "900";
+        box.style.zIndex = "999999";
+        box.style.maxWidth = "min(920px, calc(100vw - 24px))";
+        box.style.textAlign = "center";
+        box.style.pointerEvents = "none";
+        box.style.opacity = "0";
+        box.style.transition = "opacity .15s ease";
+        document.body.appendChild(box);
+      }
+      box.textContent = String(msg || "");
+      box.style.opacity = "1";
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { box.style.opacity = "0"; }, 1300);
+    } catch {}
+  }
+
+  /*****************************************************************
+   * 9) VIEW / NAV
+   *****************************************************************/
+  function setView(view){
+    state.ui.view = view;
     persist();
-    render();
+    renderView();
   }
 
-  function setFolder(letter){
-    if (!FOLDERS.includes(letter)) return;
-    state.ui.folder = letter;
-    persist();
-    render();
+  function renderView(){
+    const view = state.ui.view;
+
+    // update nav active class
+    for (const b of el.pills()) {
+      b.classList.toggle("active", b.dataset.nav === view);
+    }
+
+    // panels
+    if (el.marketPanel) el.marketPanel.classList.toggle("hidden", view !== "market");
+    if (el.projectsPanel) el.projectsPanel.classList.toggle("hidden", view !== "projects");
+    if (el.editPanel) el.editPanel.classList.toggle("hidden", view !== "edit");
+
+    // If edit: require password
+    if (view === "edit" && !isAdminAuthed()) {
+      // bounce back to market + prompt
+      state.ui.view = "market";
+      persist();
+      if (el.marketPanel) el.marketPanel.classList.remove("hidden");
+      if (el.projectsPanel) el.projectsPanel.classList.add("hidden");
+      if (el.editPanel) el.editPanel.classList.add("hidden");
+      for (const b of el.pills()) b.classList.toggle("active", b.dataset.nav === "market");
+      openAdminPrompt();
+      return;
+    }
+
+    // render per view
+    renderTopStats();
+    renderMarket();
+    renderProjects();
+    if (view === "edit") renderEditPanel();
   }
 
-  function setSelected(id){
-    state.ui.selectedId = id;
-    persist();
-    render();
-  }
+  /*****************************************************************
+   * 10) ADMIN PASSWORD MODAL (separate from detail modal)
+   *****************************************************************/
+  let adminModalEl = null;
 
-  function money(n){
-    const x = Math.round(nnum(n, 0));
-    return x.toLocaleString("en-US");
-  }
+  function ensureAdminModal(){
+    if (adminModalEl) return adminModalEl;
 
-  function getPoints(folder){
-    return nnum(state.folders?.[folder]?.points, DEFAULT_POINTS);
-  }
-
-  function addPoints(folder, amt){
-    const a = nnum(amt, 0);
-    state.folders[folder].points = nnum(state.folders[folder].points, DEFAULT_POINTS) + a;
-    persist();
-    render();
-  }
-
-  function setPoints(folder, value){
-    state.folders[folder].points = Math.max(0, nnum(value, 0));
-    persist();
-    render();
-  }
-
-  function openModal(node){
-    modalBack.innerHTML = "";
     const wrap = document.createElement("div");
-    wrap.className = "gb-modal";
-    wrap.appendChild(node);
-    modalBack.appendChild(wrap);
-    modalBack.style.display = "flex";
-  }
+    wrap.id = "adminModal";
+    wrap.className = "modal hidden";
 
-  function closeModal(){
-    modalBack.style.display = "none";
-    modalBack.innerHTML = "";
-  }
+    // build a panel inside
+    const panel = document.createElement("div");
+    panel.className = "panel";
+    panel.style.padding = "14px";
+    panel.style.maxWidth = "520px";
+    panel.style.margin = "0 auto";
 
-  function requireAdminThen(cb){
-    if (isEditAuthed()) { cb(); return; }
+    const title = document.createElement("div");
+    title.style.fontWeight = "1000";
+    title.style.fontSize = "18px";
+    title.style.marginBottom = "6px";
+    title.textContent = "Admin Lock";
 
-    const box = document.createElement("div");
-    const h = document.createElement("h2");
-    h.textContent = "Admin Lock";
-    const p = document.createElement("p");
-    p.textContent = "Enter the admin password to open the Edit Panel.";
+    const hint = document.createElement("div");
+    hint.className = "hint";
+    hint.style.padding = "0";
+    hint.textContent = "Enter the admin password to open the Edit tab.";
+
     const row = document.createElement("div");
-    row.className = "gb-kv";
+    row.style.display = "flex";
+    row.style.gap = "10px";
+    row.style.marginTop = "12px";
+    row.style.flexWrap = "wrap";
 
     const input = document.createElement("input");
-    input.className = "gb-input";
+    input.className = "input";
     input.type = "password";
     input.placeholder = "Password";
     input.autocomplete = "current-password";
+    input.style.flex = "1";
 
-    const ok = document.createElement("button");
-    ok.className = "gb-btn";
-    ok.textContent = "Unlock";
+    const unlock = document.createElement("button");
+    unlock.className = "btn ghost";
+    unlock.textContent = "Unlock";
 
     const cancel = document.createElement("button");
-    cancel.className = "gb-btn";
+    cancel.className = "btn ghost";
     cancel.textContent = "Cancel";
 
     const msg = document.createElement("div");
-    msg.className = "gb-small";
-    msg.style.marginTop = "8px";
+    msg.className = "hint small";
+    msg.style.padding = "10px 0 0 0";
+    msg.textContent = "";
 
+    function close(){
+      hideModal(wrap);
+      msg.textContent = "";
+      input.value = "";
+    }
     function doUnlock(){
       const val = String(input.value || "");
-      if (val === EDIT_PANEL_PASSWORD) {
-        setEditAuthed(true);
-        closeModal();
-        cb();
+      if (val === ADMIN_PASSWORD) {
+        setAdminAuthed(true);
+        close();
+        setView("edit");
       } else {
         msg.textContent = "Wrong password.";
       }
     }
 
-    ok.addEventListener("click", doUnlock);
+    unlock.addEventListener("click", doUnlock);
+    cancel.addEventListener("click", close);
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") doUnlock();
-      if (e.key === "Escape") closeModal();
+      if (e.key === "Escape") close();
     });
-    cancel.addEventListener("click", closeModal);
 
     row.appendChild(input);
-    row.appendChild(ok);
+    row.appendChild(unlock);
     row.appendChild(cancel);
 
-    box.appendChild(h);
-    box.appendChild(p);
-    box.appendChild(row);
-    box.appendChild(msg);
+    panel.appendChild(title);
+    panel.appendChild(hint);
+    panel.appendChild(row);
+    panel.appendChild(msg);
 
-    openModal(box);
-    input.focus();
+    wrap.appendChild(panel);
+    document.body.appendChild(wrap);
+
+    adminModalEl = wrap;
+    return adminModalEl;
   }
 
-  function renderMarket(){
-    const panel = document.createElement("div");
-    panel.className = "gb-panel";
-
-    const folderRow = document.createElement("div");
-    folderRow.className = "gb-row";
-
-    const left = document.createElement("div");
-    left.className = "gb-kv";
-
-    const folderLabel = document.createElement("div");
-    folderLabel.innerHTML = `<b>Folder:</b>`;
-
-    const folderSelect = document.createElement("select");
-    folderSelect.className = "gb-select";
-    for (const f of FOLDERS) {
-      const opt = document.createElement("option");
-      opt.value = f;
-      opt.textContent = f;
-      if (f === state.ui.folder) opt.selected = true;
-      folderSelect.appendChild(opt);
-    }
-    folderSelect.addEventListener("change", () => setFolder(folderSelect.value));
-
-    const points = document.createElement("div");
-    points.className = "gb-kv";
-    points.innerHTML = `<b>Points:</b> ${money(getPoints(state.ui.folder))}`;
-
-    left.appendChild(folderLabel);
-    left.appendChild(folderSelect);
-    left.appendChild(points);
-
-    const right = document.createElement("div");
-    right.className = "gb-kv";
-
-    const sel = document.createElement("select");
-    sel.className = "gb-select";
-    for (const ch of BASE_CHARACTERS) {
-      const opt = document.createElement("option");
-      opt.value = ch.id;
-      opt.textContent = `${ch.name} (${ch.id})`;
-      if (ch.id === state.ui.selectedId) opt.selected = true;
-      sel.appendChild(opt);
-    }
-    sel.addEventListener("change", () => setSelected(sel.value));
-
-    const st = state.stocks[state.ui.selectedId];
-    const stInfo = document.createElement("div");
-    stInfo.className = "gb-small";
-    stInfo.innerHTML = st
-      ? `Price: <b>${money(st.price)}</b> • Vol: <b>${st.volatility}</b> • Cap: <b>${money(st.capMax)}</b> • Stagnated: <b>${st.stagnated ? "YES" : "NO"}</b>`
-      : "No stock selected.";
-
-    right.appendChild(document.createTextNode("Selected: "));
-    right.appendChild(sel);
-    right.appendChild(stInfo);
-
-    folderRow.appendChild(left);
-    folderRow.appendChild(right);
-
-    const grid = document.createElement("div");
-    grid.className = "gb-grid";
-    grid.style.marginTop = "12px";
-
-    for (const ch of BASE_CHARACTERS) {
-      const st = state.stocks[ch.id];
-      const media = entityMedia[ch.id] || {};
-      const imgUrl = safeUrl(media.image);
-      const linkUrl = safeUrl(media.link);
-
-      const card = document.createElement("div");
-      card.className = "gb-card";
-
-      const img = document.createElement("img");
-      img.alt = ch.name;
-      if (imgUrl) img.src = imgUrl;
-
-      const pad = document.createElement("div");
-      pad.className = "pad";
-
-      const title = document.createElement("h3");
-      title.textContent = ch.name;
-
-      const meta = document.createElement("div");
-      meta.className = "gb-meta";
-      meta.textContent = `${ch.type} • id: ${ch.id}`;
-
-      const price = document.createElement("div");
-      price.className = "gb-price";
-      price.innerHTML = `<span>Price</span><span>${money(st?.price ?? 0)}</span>`;
-
-      const small = document.createElement("div");
-      small.className = "gb-small";
-      small.style.marginTop = "6px";
-      small.textContent = `Vol: ${st?.volatility ?? 0} • Cap: ${money(st?.capMax ?? 0)} • ${st?.stagnated ? "STAGNATED" : "LIVE"}`;
-
-      const btnRow = document.createElement("div");
-      btnRow.className = "gb-kv";
-      btnRow.style.marginTop = "10px";
-
-      const pick = document.createElement("button");
-      pick.className = "gb-btn";
-      pick.textContent = "Select";
-      pick.addEventListener("click", () => setSelected(ch.id));
-
-      btnRow.appendChild(pick);
-
-      if (linkUrl) {
-        const a = document.createElement("a");
-        a.className = "gb-btn gb-link";
-        a.href = linkUrl;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        a.textContent = "Open Link";
-        btnRow.appendChild(a);
-      }
-
-      pad.appendChild(title);
-      pad.appendChild(meta);
-      pad.appendChild(price);
-      pad.appendChild(small);
-      pad.appendChild(btnRow);
-
-      card.appendChild(img);
-      card.appendChild(pad);
-      grid.appendChild(card);
-    }
-
-    panel.appendChild(folderRow);
-    panel.appendChild(grid);
-    return panel;
+  function showBackdrop(){
+    if (!el.modalBackdrop) return;
+    el.modalBackdrop.classList.remove("hidden");
+  }
+  function hideBackdrop(){
+    if (!el.modalBackdrop) return;
+    el.modalBackdrop.classList.add("hidden");
   }
 
-  function renderCharacters(){
-    const panel = document.createElement("div");
-    panel.className = "gb-panel";
-
-    const p = document.createElement("div");
-    p.className = "gb-small";
-    p.textContent = `Loaded characters: ${BASE_CHARACTERS.length}. Images come from entityMedia when available.`;
-    panel.appendChild(p);
-
-    const list = document.createElement("div");
-    list.className = "gb-grid";
-    list.style.marginTop = "12px";
-
-    for (const ch of BASE_CHARACTERS) {
-      const media = entityMedia[ch.id] || {};
-      const imgUrl = safeUrl(media.image);
-      const linkUrl = safeUrl(media.link);
-
-      const card = document.createElement("div");
-      card.className = "gb-card";
-
-      const img = document.createElement("img");
-      img.alt = ch.name;
-      if (imgUrl) img.src = imgUrl;
-
-      const pad = document.createElement("div");
-      pad.className = "pad";
-
-      const title = document.createElement("h3");
-      title.textContent = ch.name;
-
-      const meta = document.createElement("div");
-      meta.className = "gb-meta";
-      meta.textContent = `id: ${ch.id} • type: ${ch.type} • stock# ${ch.stock}`;
-
-      const stats = document.createElement("div");
-      stats.className = "gb-small";
-      stats.style.marginTop = "6px";
-      stats.textContent = `min:${money(ch.min)} max:${money(ch.max)} base:${money(ch.base)} tags:[${(ch.tags||[]).join(",")}]`;
-
-      const row = document.createElement("div");
-      row.className = "gb-kv";
-      row.style.marginTop = "10px";
-
-      const sel = document.createElement("button");
-      sel.className = "gb-btn";
-      sel.textContent = "Select in Market";
-      sel.addEventListener("click", () => { state.ui.tab = "Market"; setSelected(ch.id); });
-
-      row.appendChild(sel);
-
-      if (linkUrl) {
-        const a = document.createElement("a");
-        a.className = "gb-btn gb-link";
-        a.href = linkUrl;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        a.textContent = "Open Link";
-        row.appendChild(a);
-      }
-
-      pad.appendChild(title);
-      pad.appendChild(meta);
-      pad.appendChild(stats);
-      pad.appendChild(row);
-
-      card.appendChild(img);
-      card.appendChild(pad);
-      list.appendChild(card);
-    }
-
-    panel.appendChild(list);
-    return panel;
+  function showModal(modalEl){
+    showBackdrop();
+    modalEl.classList.remove("hidden");
+  }
+  function hideModal(modalEl){
+    modalEl.classList.add("hidden");
+    // if both modals hidden => hide backdrop
+    const anyOpen = !el.detailModal?.classList.contains("hidden") || !adminModalEl?.classList.contains("hidden");
+    if (!anyOpen) hideBackdrop();
   }
 
-  function renderEditPanel(){
-    const panel = document.createElement("div");
-    panel.className = "gb-panel";
-
-    const h = document.createElement("div");
-    h.className = "gb-kv";
-    h.innerHTML = `<b>Admin Panel</b> <span class="gb-small">(stagnate, volatility, set price, max cap, give points)</span>`;
-
-    const logout = document.createElement("button");
-    logout.className = "gb-btn";
-    logout.textContent = "Lock (log out)";
-    logout.addEventListener("click", () => {
-      setEditAuthed(false);
-      render();
-    });
-    h.appendChild(logout);
-
-    panel.appendChild(h);
-    panel.appendChild(divider());
-
-    // Folder points controls
-    const folderBox = document.createElement("div");
-    folderBox.className = "gb-kv";
-    folderBox.innerHTML = `<b>Folder Points:</b>`;
-
-    const folderSel = document.createElement("select");
-    folderSel.className = "gb-select";
-    for (const f of FOLDERS) {
-      const opt = document.createElement("option");
-      opt.value = f;
-      opt.textContent = f;
-      if (f === state.ui.folder) opt.selected = true;
-      folderSel.appendChild(opt);
-    }
-
-    const ptsNow = document.createElement("div");
-    ptsNow.className = "gb-small";
-
-    function refreshPtsNow(){
-      const f = folderSel.value;
-      ptsNow.textContent = `Current points in ${f}: ${money(getPoints(f))}`;
-    }
-    folderSel.addEventListener("change", refreshPtsNow);
-    refreshPtsNow();
-
-    const addPts = document.createElement("input");
-    addPts.className = "gb-input";
-    addPts.type = "number";
-    addPts.step = "1";
-    addPts.placeholder = "Add points (e.g. 1000000)";
-
-    const addBtn = document.createElement("button");
-    addBtn.className = "gb-btn";
-    addBtn.textContent = "Give Points";
-    addBtn.addEventListener("click", () => {
-      addPoints(folderSel.value, nnum(addPts.value, 0));
-      addPts.value = "";
-      refreshPtsNow();
-    });
-
-    const setPts = document.createElement("input");
-    setPts.className = "gb-input";
-    setPts.type = "number";
-    setPts.step = "1";
-    setPts.placeholder = "Set points (absolute)";
-
-    const setBtn = document.createElement("button");
-    setBtn.className = "gb-btn";
-    setBtn.textContent = "Set Points";
-    setBtn.addEventListener("click", () => {
-      setPoints(folderSel.value, nnum(setPts.value, 0));
-      setPts.value = "";
-      refreshPtsNow();
-    });
-
-    folderBox.appendChild(folderSel);
-    folderBox.appendChild(ptsNow);
-    folderBox.appendChild(addPts);
-    folderBox.appendChild(addBtn);
-    folderBox.appendChild(setPts);
-    folderBox.appendChild(setBtn);
-
-    panel.appendChild(folderBox);
-    panel.appendChild(divider());
-
-    // Stock controls
-    const stockBox = document.createElement("div");
-    stockBox.className = "gb-kv";
-    stockBox.innerHTML = `<b>Stock Controls:</b>`;
-
-    const stockSel = document.createElement("select");
-    stockSel.className = "gb-select";
-    for (const ch of BASE_CHARACTERS) {
-      const opt = document.createElement("option");
-      opt.value = ch.id;
-      opt.textContent = `${ch.name} (${ch.id})`;
-      if (ch.id === state.ui.selectedId) opt.selected = true;
-      stockSel.appendChild(opt);
-    }
-
-    const stNow = document.createElement("div");
-    stNow.className = "gb-small";
-
-    const volInput = document.createElement("input");
-    volInput.className = "gb-input";
-    volInput.type = "number";
-    volInput.step = "0.1";
-    volInput.placeholder = "Volatility (0 = frozen)";
-
-    const priceInput = document.createElement("input");
-    priceInput.className = "gb-input";
-    priceInput.type = "number";
-    priceInput.step = "1";
-    priceInput.placeholder = "Set price";
-
-    const capInput = document.createElement("input");
-    capInput.className = "gb-input";
-    capInput.type = "number";
-    capInput.step = "1";
-    capInput.placeholder = "Set max cap";
-
-    const stagnateBtn = document.createElement("button");
-    stagnateBtn.className = "gb-btn";
-
-    function refreshStockNow(){
-      const id = stockSel.value;
-      state.ui.selectedId = id; // keep selection synced
-      const st = state.stocks[id];
-      stNow.innerHTML = st
-        ? `Price: <b>${money(st.price)}</b> • Vol: <b>${st.volatility}</b> • Cap: <b>${money(st.capMax)}</b> • Stagnated: <b>${st.stagnated ? "YES" : "NO"}</b>`
-        : "Unknown stock.";
-
-      stagnateBtn.textContent = (st && st.stagnated) ? "Unstagnate (Resume)" : "Stagnate (Freeze)";
-    }
-
-    stockSel.addEventListener("change", refreshStockNow);
-
-    const applyVol = document.createElement("button");
-    applyVol.className = "gb-btn";
-    applyVol.textContent = "Apply Volatility";
-    applyVol.addEventListener("click", () => {
-      const id = stockSel.value;
-      const st = state.stocks[id];
-      if (!st) return;
-      st.volatility = clamp(nnum(volInput.value, st.volatility), 0, 1000);
-      persist();
-      refreshStockNow();
-      render(); // reflect immediately on market
-    });
-
-    const applyPrice = document.createElement("button");
-    applyPrice.className = "gb-btn";
-    applyPrice.textContent = "Set Price";
-    applyPrice.addEventListener("click", () => {
-      const id = stockSel.value;
-      const st = state.stocks[id];
-      if (!st) return;
-      const val = Math.max(0, nnum(priceInput.value, st.price));
-      st.price = Math.min(val, st.capMax);
-      // ensure cap >= price (if user set cap lower earlier)
-      st.capMax = Math.max(st.capMax, st.price);
-      persist();
-      refreshStockNow();
-      render();
-    });
-
-    const applyCap = document.createElement("button");
-    applyCap.className = "gb-btn";
-    applyCap.textContent = "Set Max Cap";
-    applyCap.addEventListener("click", () => {
-      const id = stockSel.value;
-      const st = state.stocks[id];
-      if (!st) return;
-      const val = Math.max(0, nnum(capInput.value, st.capMax));
-      st.capMax = Math.max(val, st.price); // cap can’t be below current price
-      persist();
-      refreshStockNow();
-      render();
-    });
-
-    stagnateBtn.addEventListener("click", () => {
-      const id = stockSel.value;
-      const st = state.stocks[id];
-      if (!st) return;
-      st.stagnated = !st.stagnated;
-      persist();
-      refreshStockNow();
-      render();
-    });
-
-    const resetAll = document.createElement("button");
-    resetAll.className = "gb-btn";
-    resetAll.textContent = "Reset ALL Stocks (defaults)";
-    resetAll.addEventListener("click", () => {
-      for (const ch of BASE_CHARACTERS) {
-        state.stocks[ch.id] = defaultStockForChar(ch);
-      }
-      persist();
-      refreshStockNow();
-      render();
-    });
-
-    stockBox.appendChild(stockSel);
-    stockBox.appendChild(stNow);
-    stockBox.appendChild(volInput);
-    stockBox.appendChild(applyVol);
-    stockBox.appendChild(priceInput);
-    stockBox.appendChild(applyPrice);
-    stockBox.appendChild(capInput);
-    stockBox.appendChild(applyCap);
-    stockBox.appendChild(stagnateBtn);
-    stockBox.appendChild(resetAll);
-
-    panel.appendChild(stockBox);
-
-    refreshStockNow();
-    return panel;
-  }
-
-  function divider(){
-    const d = document.createElement("div");
-    d.className = "gb-divider";
-    return d;
-  }
-
-  function render(){
-    if (!root) return;
-
-    root.innerHTML = "";
-
-    const top = document.createElement("div");
-    top.className = "gb-top";
-
-    const title = document.createElement("div");
-    title.className = "gb-title";
-    title.textContent = "GATE//BREACH — Market";
-
-    const tabs = document.createElement("div");
-    tabs.className = "gb-tabs";
-
-    const tabNames = ["Market", "Characters", "Edit"];
-    for (const t of tabNames) {
-      const btn = document.createElement("button");
-      btn.className = "gb-tab";
-      btn.type = "button";
-      btn.textContent = t;
-      btn.setAttribute("aria-current", String(state.ui.tab === t));
-      btn.addEventListener("click", () => {
-        if (t === "Edit") {
-          requireAdminThen(() => setTab("Edit"));
-        } else {
-          setTab(t);
-        }
-      });
-      tabs.appendChild(btn);
-    }
-
-    top.appendChild(title);
-    top.appendChild(tabs);
-    root.appendChild(top);
-
-    // content
-    let content;
-    if (state.ui.tab === "Market") content = renderMarket();
-    else if (state.ui.tab === "Characters") content = renderCharacters();
-    else if (state.ui.tab === "Edit") {
-      // If they somehow force it open without auth, re-lock.
-      if (!isEditAuthed()) {
-        state.ui.tab = "Market";
-        persist();
-        content = renderMarket();
-      } else {
-        content = renderEditPanel();
-      }
-    } else {
-      content = renderMarket();
-    }
-
-    root.appendChild(content);
+  function openAdminPrompt(){
+    const m = ensureAdminModal();
+    showModal(m);
+    // focus password
+    const input = m.querySelector("input[type='password']");
+    if (input) setTimeout(() => input.focus(), 0);
   }
 
   /*****************************************************************
-   * 9) BOOT
+   * 11) BUY / SELL / WALLET
+   *****************************************************************/
+  function ownedQty(id){
+    return Math.max(0, Math.floor(nnum(state.wallet.holdings?.[id], 0)));
+  }
+
+  function holdingsValue(){
+    let total = 0;
+    for (const [id, qtyRaw] of Object.entries(state.wallet.holdings || {})) {
+      const qty = Math.max(0, Math.floor(nnum(qtyRaw, 0)));
+      if (!qty) continue;
+      const st = state.stocks[id];
+      if (!st) continue;
+      total += st.price * qty;
+    }
+    return total;
+  }
+
+  function netWorth(){
+    return state.wallet.cash + holdingsValue();
+  }
+
+  function buy(id, qty){
+    qty = Math.max(1, Math.floor(nnum(qty, 1)));
+    const st = state.stocks[id];
+    if (!st) return;
+    const cost = st.price * qty;
+    if (cost > state.wallet.cash + 1e-9) {
+      notify("Not enough cash.");
+      return;
+    }
+    state.wallet.cash -= cost;
+    state.wallet.holdings[id] = ownedQty(id) + qty;
+    persist();
+    renderTopStats();
+    renderWanted();
+    renderPortfolio();
+    renderMarket(); // update owned labels
+  }
+
+  function sell(id, qty){
+    qty = Math.max(1, Math.floor(nnum(qty, 1)));
+    const st = state.stocks[id];
+    if (!st) return;
+    const have = ownedQty(id);
+    if (have <= 0) {
+      notify("You own 0.");
+      return;
+    }
+    const toSell = Math.min(have, qty);
+    state.wallet.holdings[id] = have - toSell;
+    if (state.wallet.holdings[id] <= 0) delete state.wallet.holdings[id];
+    state.wallet.cash += st.price * toSell;
+    persist();
+    renderTopStats();
+    renderWanted();
+    renderPortfolio();
+    renderMarket();
+  }
+
+  function resetPortfolio(){
+    state.wallet.cash = DEFAULT_CASH;
+    state.wallet.holdings = {};
+    state.sim.day = 0;
+    // reset stocks to default (keeps media edits)
+    const all = getAllCharacters();
+    for (const ch of all) state.stocks[ch.id] = defaultStockFor(ch);
+    state.sim.running = false;
+    persist();
+    stopSim();
+    notify("Portfolio reset.");
+    renderAll();
+  }
+
+  /*****************************************************************
+   * 12) SIMULATION
+   *****************************************************************/
+  function stepOneDay(){
+    const all = getAllCharacters();
+    const gv = clamp(nnum(state.sim.globalVol, 1), 0, 1000);
+
+    for (const ch of all) {
+      const st = state.stocks[ch.id];
+      if (!st) continue;
+
+      st.prev = st.price;
+
+      if (st.frozen || st.vol <= 0 || gv <= 0) {
+        st.hist.push(st.price);
+        st.hist = st.hist.slice(-60);
+        continue;
+      }
+
+      const vol = clamp(nnum(st.vol, 1), 0, 1000) * gv;
+
+      // gentle walk scaled by price
+      const scale = Math.max(1, st.price * 0.012);
+      const delta = (Math.random() - 0.5) * 2 * scale * vol;
+
+      let next = st.price + delta;
+      next = Math.max(0, next);
+      next = Math.min(next, st.cap);
+
+      st.price = next;
+      st.hist.push(next);
+      st.hist = st.hist.slice(-60);
+    }
+
+    state.sim.day += 1;
+  }
+
+  let simTimer = null;
+  function startSim(){
+    state.sim.running = true;
+    persist();
+    if (simTimer) clearInterval(simTimer);
+    simTimer = setInterval(() => {
+      stepOneDay();
+      persist();
+      renderAll();
+    }, state.sim.speedMs);
+  }
+
+  function stopSim(){
+    state.sim.running = false;
+    persist();
+    if (simTimer) clearInterval(simTimer);
+    simTimer = null;
+  }
+
+  /*****************************************************************
+   * 13) BULK (default mono)
+   *****************************************************************/
+  let bulkBarEl = null;
+
+  function ensureBulkBar(){
+    if (bulkBarEl) return bulkBarEl;
+
+    // attach into Market filters area (same panel)
+    const filters = el.marketPanel?.querySelector(".filters");
+    if (!filters) return null;
+
+    const bar = document.createElement("div");
+    bar.className = "bulkBar";
+    bar.style.marginTop = "10px";
+
+    const left = document.createElement("div");
+    left.className = "bulkLeft";
+
+    const toggle = document.createElement("button");
+    toggle.className = "btn ghost";
+    toggle.id = "bulkToggleBtn";
+
+    const clear = document.createElement("button");
+    clear.className = "btn ghost";
+    clear.textContent = "Clear Picks";
+
+    const count = document.createElement("div");
+    count.className = "bulkCount";
+    count.id = "bulkCountEl";
+
+    const qtyMini = document.createElement("div");
+    qtyMini.className = "qtyMini";
+    const qtyLabel = document.createElement("label");
+    qtyLabel.textContent = "Qty";
+    const qtyInput = document.createElement("input");
+    qtyInput.id = "qtyInput";
+    qtyInput.className = "input";
+    qtyInput.type = "number";
+    qtyInput.step = "1";
+    qtyInput.min = "1";
+    qtyInput.value = String(state.ui.bulkQty || 1);
+
+    qtyMini.appendChild(qtyLabel);
+    qtyMini.appendChild(qtyInput);
+
+    left.appendChild(toggle);
+    left.appendChild(clear);
+    left.appendChild(count);
+    left.appendChild(qtyMini);
+
+    const right = document.createElement("div");
+    right.className = "bulkRight";
+
+    const buyBtn = document.createElement("button");
+    buyBtn.className = "btn buy";
+    buyBtn.textContent = "BUY PICKED";
+
+    const sellBtn = document.createElement("button");
+    sellBtn.className = "btn sell";
+    sellBtn.textContent = "SELL PICKED";
+
+    right.appendChild(buyBtn);
+    right.appendChild(sellBtn);
+
+    bar.appendChild(left);
+    bar.appendChild(right);
+
+    // events
+    function refresh(){
+      const on = state.ui.mode === "bulk";
+      toggle.textContent = on ? "Bulk: ON" : "Bulk: OFF";
+      bar.style.opacity = on ? "1" : ".65";
+      bar.style.filter = on ? "none" : "grayscale(.35)";
+      count.textContent = `Picked: ${state.ui.bulkSelected.length}`;
+      qtyInput.value = String(state.ui.bulkQty || 1);
+    }
+
+    toggle.addEventListener("click", () => {
+      state.ui.mode = (state.ui.mode === "bulk") ? "mono" : "bulk";
+      // "start in mono choice" => default stays mono unless toggled
+      persist();
+      refresh();
+      renderMarket(); // show/hide pickboxes
+    });
+
+    clear.addEventListener("click", () => {
+      state.ui.bulkSelected = [];
+      persist();
+      refresh();
+      renderMarket();
+    });
+
+    qtyInput.addEventListener("change", () => {
+      state.ui.bulkQty = clamp(Math.floor(nnum(qtyInput.value, 1)), 1, 1e9);
+      persist();
+      refresh();
+    });
+
+    buyBtn.addEventListener("click", () => {
+      if (state.ui.mode !== "bulk") return notify("Turn Bulk ON first.");
+      const qty = Math.max(1, Math.floor(nnum(state.ui.bulkQty, 1)));
+      const ids = state.ui.bulkSelected.slice();
+      if (!ids.length) return notify("Pick some cards first.");
+      // buy sequentially until cash ends
+      let bought = 0;
+      for (const id of ids) {
+        const st = state.stocks[id];
+        if (!st) continue;
+        const cost = st.price * qty;
+        if (cost > state.wallet.cash + 1e-9) continue;
+        buy(id, qty);
+        bought++;
+      }
+      notify(`Bulk buy complete (${bought}/${ids.length}).`);
+    });
+
+    sellBtn.addEventListener("click", () => {
+      if (state.ui.mode !== "bulk") return notify("Turn Bulk ON first.");
+      const qty = Math.max(1, Math.floor(nnum(state.ui.bulkQty, 1)));
+      const ids = state.ui.bulkSelected.slice();
+      if (!ids.length) return notify("Pick some cards first.");
+      let sold = 0;
+      for (const id of ids) {
+        if (ownedQty(id) <= 0) continue;
+        sell(id, qty);
+        sold++;
+      }
+      notify(`Bulk sell complete (${sold}/${ids.length}).`);
+    });
+
+    filters.parentElement.appendChild(bar);
+    bulkBarEl = bar;
+
+    refresh();
+    return bulkBarEl;
+  }
+
+  function toggleBulkPick(id, picked){
+    const set = new Set(state.ui.bulkSelected);
+    if (picked) set.add(id);
+    else set.delete(id);
+    state.ui.bulkSelected = Array.from(set);
+    persist();
+    // update count immediately
+    if (bulkBarEl) {
+      const c = bulkBarEl.querySelector("#bulkCountEl");
+      if (c) c.textContent = `Picked: ${state.ui.bulkSelected.length}`;
+    }
+  }
+
+  /*****************************************************************
+   * 14) RENDER: TOP STATS, WANTED, PORTFOLIO, WATCH
+   *****************************************************************/
+  function renderTopStats(){
+    if (el.dayEl) el.dayEl.textContent = String(state.sim.day);
+    if (el.balanceEl) el.balanceEl.textContent = money(state.wallet.cash);
+    if (el.netWorthEl) el.netWorthEl.textContent = money(netWorth());
+  }
+
+  function computePopularity(ch, st){
+    const base = nnum(ch.base, 100) || 100;
+    const ratio = base ? (st.price / base) : 1;
+    return clamp(Math.round(50 + (ratio - 1) * 60), 0, 100);
+  }
+
+  function computePotential(ch, st){
+    if (!st.cap) return 0;
+    return clamp(Math.round(((st.cap - st.price) / st.cap) * 100), 0, 100);
+  }
+
+  function renderWanted(){
+    const all = getAllCharacters();
+    const ch = all.find(x => x.id === state.ui.selectedId) || all[0];
+    if (!ch) return;
+
+    const st = state.stocks[ch.id] || defaultStockFor(ch);
+    const media = getMediaFor(ch.id);
+
+    if (el.wantedImg) {
+      el.wantedImg.src = media.image || "";
+      el.wantedImg.alt = ch.name;
+    }
+    if (el.wantedName) el.wantedName.textContent = ch.name;
+    if (el.wantedRole) el.wantedRole.textContent = `${String(ch.type || "unknown").toUpperCase()} • ${ch.id}`;
+    if (el.wantedPrice) el.wantedPrice.textContent = money(st.price);
+    if (el.wantedOwned) el.wantedOwned.textContent = String(ownedQty(ch.id));
+    if (el.wantedPop) el.wantedPop.textContent = String(computePopularity(ch, st));
+    if (el.wantedPot) el.wantedPot.textContent = String(computePotential(ch, st));
+    if (el.wantedCap) el.wantedCap.textContent = money(st.cap);
+    if (el.wantedFrozen) el.wantedFrozen.textContent = (st.frozen || st.vol <= 0) ? "FROZEN" : "LIVE";
+
+    if (el.wantedLinkBtn) {
+      if (media.link) {
+        el.wantedLinkBtn.href = media.link;
+        el.wantedLinkBtn.style.pointerEvents = "auto";
+        el.wantedLinkBtn.style.opacity = "1";
+      } else {
+        el.wantedLinkBtn.removeAttribute("href");
+        el.wantedLinkBtn.style.pointerEvents = "none";
+        el.wantedLinkBtn.style.opacity = ".55";
+      }
+    }
+
+    if (el.wantedBuyBtn) el.wantedBuyBtn.onclick = () => buy(ch.id, 1);
+    if (el.wantedSellBtn) el.wantedSellBtn.onclick = () => sell(ch.id, 1);
+  }
+
+  function renderPortfolio(){
+    if (!el.positionsList) return;
+
+    // add missing class in case CSS expects it
+    el.positionsList.classList.add("portfolioList");
+
+    const entries = Object.entries(state.wallet.holdings || {})
+      .map(([id, qty]) => ({ id, qty: Math.max(0, Math.floor(nnum(qty, 0))) }))
+      .filter(x => x.qty > 0);
+
+    if (el.positionsCount) el.positionsCount.textContent = String(entries.length);
+    if (el.holdingsValue) el.holdingsValue.textContent = money(holdingsValue());
+    if (el.cashValue) el.cashValue.textContent = money(state.wallet.cash);
+
+    el.positionsList.innerHTML = "";
+
+    const all = getAllCharacters();
+    const byId = new Map(all.map(c => [c.id, c]));
+
+    for (const pos of entries) {
+      const ch = byId.get(pos.id);
+      const st = state.stocks[pos.id];
+      if (!ch || !st) continue;
+
+      const row = document.createElement("div");
+      row.className = "posRow";
+
+      const left = document.createElement("div");
+      const name = document.createElement("div");
+      name.className = "posName";
+      name.textContent = ch.name;
+
+      const meta = document.createElement("div");
+      meta.className = "posMeta";
+      meta.textContent = `Owned: ${pos.qty} • Price: ${money(st.price)} • Value: ${money(st.price * pos.qty)}`;
+
+      left.appendChild(name);
+      left.appendChild(meta);
+
+      const right = document.createElement("div");
+      right.style.display = "flex";
+      right.style.gap = "8px";
+      right.style.flexWrap = "wrap";
+      right.style.alignItems = "center";
+
+      const b1 = document.createElement("button");
+      b1.className = "btn buy";
+      b1.textContent = "+1";
+      b1.addEventListener("click", () => buy(pos.id, 1));
+
+      const s1 = document.createElement("button");
+      s1.className = "btn sell";
+      s1.textContent = "-1";
+      s1.addEventListener("click", () => sell(pos.id, 1));
+
+      const focus = document.createElement("button");
+      focus.className = "btn ghost";
+      focus.textContent = "Focus";
+      focus.addEventListener("click", () => {
+        state.ui.selectedId = pos.id;
+        persist();
+        renderWanted();
+        renderMarket();
+      });
+
+      right.appendChild(b1);
+      right.appendChild(s1);
+      right.appendChild(focus);
+
+      row.appendChild(left);
+      row.appendChild(right);
+
+      el.positionsList.appendChild(row);
+    }
+  }
+
+  function renderWatch(){
+    if (!el.gainersList || !el.losersList) return;
+
+    const all = getAllCharacters();
+    const rows = [];
+
+    for (const ch of all) {
+      const st = state.stocks[ch.id];
+      if (!st) continue;
+      const prev = (st.prev > 0) ? st.prev : st.price;
+      const delta = st.price - prev;
+      const pct = prev ? (delta / prev) * 100 : 0;
+      rows.push({ id: ch.id, name: ch.name, pct });
+    }
+
+    rows.sort((a, b) => b.pct - a.pct);
+    const gainers = rows.slice(0, 6);
+    const losers = rows.slice(-6).sort((a, b) => a.pct - b.pct);
+
+    function makeList(target, items){
+      target.innerHTML = "";
+      for (const r of items) {
+        const row = document.createElement("div");
+        row.className = "watchRow";
+        row.addEventListener("click", () => {
+          state.ui.selectedId = r.id;
+          persist();
+          renderWanted();
+          renderMarket();
+        });
+
+        const name = document.createElement("div");
+        name.className = "watchName";
+        name.textContent = r.name;
+
+        const d = document.createElement("div");
+        d.className = "watchDelta " + (r.pct >= 0 ? "good" : "bad");
+        d.textContent = `${r.pct >= 0 ? "+" : ""}${r.pct.toFixed(1)}%`;
+
+        row.appendChild(name);
+        row.appendChild(d);
+        target.appendChild(row);
+      }
+    }
+
+    makeList(el.gainersList, gainers);
+    makeList(el.losersList, losers);
+  }
+
+  /*****************************************************************
+   * 15) MARKET RENDER (GRID) + FILTERS
+   *****************************************************************/
+  function buildFilterOptions(all){
+    // arcSelect (tags)
+    const tagSet = new Set();
+    for (const ch of all) for (const t of (ch.tags || [])) tagSet.add(String(t));
+    const tags = Array.from(tagSet).sort((a,b) => nnum(a,0)-nnum(b,0));
+
+    if (el.arcSelect && !el.arcSelect.dataset.built) {
+      el.arcSelect.innerHTML = "";
+      const o0 = document.createElement("option");
+      o0.value = "all";
+      o0.textContent = "All Arcs";
+      el.arcSelect.appendChild(o0);
+
+      for (const t of tags) {
+        const opt = document.createElement("option");
+        opt.value = t;
+        opt.textContent = `Arc ${t}`;
+        el.arcSelect.appendChild(opt);
+      }
+      el.arcSelect.dataset.built = "1";
+    }
+
+    // typeSelect
+    const typeSet = new Set(all.map(c => String(c.type || "unknown")));
+    const types = Array.from(typeSet).sort((a,b) => a.localeCompare(b));
+
+    if (el.typeSelect && !el.typeSelect.dataset.built) {
+      el.typeSelect.innerHTML = "";
+      const o0 = document.createElement("option");
+      o0.value = "all";
+      o0.textContent = "All Types";
+      el.typeSelect.appendChild(o0);
+
+      for (const t of types) {
+        const opt = document.createElement("option");
+        opt.value = t;
+        opt.textContent = t;
+        el.typeSelect.appendChild(opt);
+      }
+      el.typeSelect.dataset.built = "1";
+    }
+
+    // sortSelect
+    if (el.sortSelect && !el.sortSelect.dataset.built) {
+      el.sortSelect.innerHTML = "";
+      const opts = [
+        ["default", "Default"],
+        ["name_asc", "Name A→Z"],
+        ["price_desc", "Price ↓"],
+        ["price_asc", "Price ↑"],
+        ["pct_desc", "Δ% ↓"],
+        ["pct_asc", "Δ% ↑"],
+      ];
+      for (const [v, label] of opts) {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = label;
+        el.sortSelect.appendChild(opt);
+      }
+      el.sortSelect.dataset.built = "1";
+    }
+  }
+
+  function applyMarketFilters(all){
+    const q = (state.ui.search || "").trim().toLowerCase();
+    const arc = state.ui.arc;
+    const type = state.ui.type;
+
+    let list = all.slice();
+
+    if (q) {
+      list = list.filter(ch =>
+        ch.name.toLowerCase().includes(q) ||
+        ch.id.toLowerCase().includes(q)
+      );
+    }
+    if (arc !== "all") {
+      list = list.filter(ch => (ch.tags || []).map(String).includes(String(arc)));
+    }
+    if (type !== "all") {
+      list = list.filter(ch => String(ch.type || "unknown") === type);
+    }
+
+    // sort
+    const sort = state.ui.sort;
+    const pctOf = (id) => {
+      const st = state.stocks[id];
+      if (!st) return 0;
+      const prev = st.prev > 0 ? st.prev : st.price;
+      const delta = st.price - prev;
+      return prev ? (delta / prev) * 100 : 0;
+    };
+
+    if (sort === "name_asc") list.sort((a,b) => a.name.localeCompare(b.name));
+    else if (sort === "price_desc") list.sort((a,b) => (state.stocks[b.id]?.price||0) - (state.stocks[a.id]?.price||0));
+    else if (sort === "price_asc") list.sort((a,b) => (state.stocks[a.id]?.price||0) - (state.stocks[b.id]?.price||0));
+    else if (sort === "pct_desc") list.sort((a,b) => pctOf(b.id) - pctOf(a.id));
+    else if (sort === "pct_asc") list.sort((a,b) => pctOf(a.id) - pctOf(b.id));
+
+    return list;
+  }
+
+  function renderMarket(){
+    if (!el.marketGrid) return;
+
+    // make sure it becomes a grid using your existing card CSS
+    el.marketGrid.classList.add("projectsGrid"); // forces grid layout from Style.CSS
+    ensureBulkBar();
+
+    const all = getAllCharacters();
+    normalizeStocks(all);
+
+    // sync filter inputs (once)
+    buildFilterOptions(all);
+
+    if (el.searchInput) el.searchInput.value = state.ui.search || "";
+    if (el.arcSelect) el.arcSelect.value = state.ui.arc || "all";
+    if (el.typeSelect) el.typeSelect.value = state.ui.type || "all";
+    if (el.sortSelect) el.sortSelect.value = state.ui.sort || "default";
+
+    const list = applyMarketFilters(all);
+
+    if (el.resultCount) el.resultCount.textContent = String(list.length);
+
+    el.marketGrid.innerHTML = "";
+
+    for (const ch of list) {
+      const st = state.stocks[ch.id] || defaultStockFor(ch);
+      const media = getMediaFor(ch.id);
+
+      const prev = st.prev > 0 ? st.prev : st.price;
+      const pct = prev ? ((st.price - prev) / prev) * 100 : 0;
+
+      const card = document.createElement("div");
+      card.className = "card";
+      card.dataset.id = ch.id;
+
+      const picked = state.ui.bulkSelected.includes(ch.id);
+      if (picked) card.classList.add("selected");
+
+      const top = document.createElement("div");
+      top.className = "cardTop";
+
+      const img = document.createElement("img");
+      img.className = "cardImg";
+      img.alt = ch.name;
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.referrerPolicy = "no-referrer";
+      img.src = media.image || "";
+      top.appendChild(img);
+
+      // pickBox only visible in bulk mode (mono choice default)
+      if (state.ui.mode === "bulk") {
+        const pickBox = document.createElement("label");
+        pickBox.className = "pickBox";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = picked;
+        const span = document.createElement("span");
+        span.textContent = "Pick";
+        pickBox.appendChild(cb);
+        pickBox.appendChild(span);
+
+        cb.addEventListener("click", (e) => e.stopPropagation());
+        pickBox.addEventListener("click", (e) => e.stopPropagation());
+
+        cb.addEventListener("change", () => {
+          toggleBulkPick(ch.id, cb.checked);
+          card.classList.toggle("selected", cb.checked);
+        });
+
+        top.appendChild(pickBox);
+      }
+
+      const divider = document.createElement("div");
+      divider.className = "cardDivider";
+
+      const body = document.createElement("div");
+      body.className = "cardBody";
+
+      const row = document.createElement("div");
+      row.className = "cardRow";
+
+      const left = document.createElement("div");
+      const name = document.createElement("div");
+      name.className = "cardName";
+      name.textContent = ch.name;
+
+      const ticker = document.createElement("div");
+      ticker.className = "ticker";
+      ticker.textContent = String(ch.type || "unknown").toUpperCase();
+
+      left.appendChild(name);
+      left.appendChild(ticker);
+
+      const right = document.createElement("div");
+      right.style.textAlign = "right";
+
+      const price = document.createElement("div");
+      price.className = "cardPrice";
+      price.textContent = money(st.price);
+
+      const delta = document.createElement("div");
+      delta.className = "delta " + (pct >= 0 ? "good" : "bad");
+      delta.textContent = `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
+
+      right.appendChild(price);
+      right.appendChild(delta);
+
+      row.appendChild(left);
+      row.appendChild(right);
+
+      const owned = document.createElement("div");
+      owned.className = "cardOwned";
+      owned.textContent = `Owned: ${ownedQty(ch.id)} • Cap: ${money(st.cap)} • ${st.frozen || st.vol <= 0 ? "FROZEN" : "LIVE"}`;
+
+      const btns = document.createElement("div");
+      btns.className = "cardBtns";
+
+      const b = document.createElement("button");
+      b.className = "btn buy";
+      b.textContent = "Buy";
+      b.addEventListener("click", (e) => { e.stopPropagation(); buy(ch.id, 1); });
+
+      const s = document.createElement("button");
+      s.className = "btn sell";
+      s.textContent = "Sell";
+      s.addEventListener("click", (e) => { e.stopPropagation(); sell(ch.id, 1); });
+
+      btns.appendChild(b);
+      btns.appendChild(s);
+
+      body.appendChild(row);
+      body.appendChild(owned);
+      body.appendChild(btns);
+
+      card.appendChild(top);
+      card.appendChild(divider);
+      card.appendChild(body);
+
+      // click selects wanted (mono)
+      card.addEventListener("click", () => {
+        state.ui.selectedId = ch.id;
+        persist();
+        renderWanted();
+        // visual focus
+        // (use selected class ONLY for bulk, so we don't conflict)
+        renderMarket();
+      });
+
+      // double click opens modal
+      card.addEventListener("dblclick", (e) => {
+        e.preventDefault();
+        openDetailModal(ch.id);
+      });
+
+      el.marketGrid.appendChild(card);
+    }
+
+    renderWanted();
+    renderPortfolio();
+    renderWatch();
+  }
+
+  /*****************************************************************
+   * 16) PROJECTS TAB (simple mirror grid)
+   *****************************************************************/
+  function renderProjects(){
+    if (!el.projectsGrid) return;
+    el.projectsGrid.classList.add("projectsGrid");
+
+    const all = getAllCharacters();
+    const list = all.slice().sort((a,b) => a.name.localeCompare(b.name));
+
+    el.projectsGrid.innerHTML = "";
+
+    for (const ch of list) {
+      const st = state.stocks[ch.id] || defaultStockFor(ch);
+      const media = getMediaFor(ch.id);
+
+      const card = document.createElement("div");
+      card.className = "card";
+
+      const top = document.createElement("div");
+      top.className = "cardTop";
+
+      const img = document.createElement("img");
+      img.className = "cardImg";
+      img.alt = ch.name;
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.referrerPolicy = "no-referrer";
+      img.src = media.image || "";
+      top.appendChild(img);
+
+      const divider = document.createElement("div");
+      divider.className = "cardDivider";
+
+      const body = document.createElement("div");
+      body.className = "cardBody";
+
+      const row = document.createElement("div");
+      row.className = "cardRow";
+
+      const left = document.createElement("div");
+      const name = document.createElement("div");
+      name.className = "cardName";
+      name.textContent = ch.name;
+      const ticker = document.createElement("div");
+      ticker.className = "ticker";
+      ticker.textContent = ch.id;
+
+      left.appendChild(name);
+      left.appendChild(ticker);
+
+      const right = document.createElement("div");
+      right.style.textAlign = "right";
+      const price = document.createElement("div");
+      price.className = "cardPrice";
+      price.textContent = money(st.price);
+      right.appendChild(price);
+
+      row.appendChild(left);
+      row.appendChild(right);
+
+      const owned = document.createElement("div");
+      owned.className = "cardOwned";
+      owned.textContent = `Type: ${String(ch.type || "unknown")} • Owned: ${ownedQty(ch.id)}`;
+
+      body.appendChild(row);
+      body.appendChild(owned);
+
+      card.appendChild(top);
+      card.appendChild(divider);
+      card.appendChild(body);
+
+      card.addEventListener("click", () => {
+        state.ui.selectedId = ch.id;
+        state.ui.view = "market";
+        persist();
+        renderView();
+      });
+
+      el.projectsGrid.appendChild(card);
+    }
+  }
+
+  /*****************************************************************
+   * 17) DETAIL MODAL
+   *****************************************************************/
+  function openDetailModal(id){
+    const all = getAllCharacters();
+    const ch = all.find(x => x.id === id);
+    if (!ch) return;
+
+    const st = state.stocks[id] || defaultStockFor(ch);
+    const media = getMediaFor(id);
+
+    if (el.modalImg) el.modalImg.src = media.image || "";
+    if (el.modalTitle) el.modalTitle.textContent = ch.name;
+    if (el.modalSub) el.modalSub.textContent = `${String(ch.type || "unknown").toUpperCase()} • ${id}`;
+    if (el.modalPrice) el.modalPrice.textContent = `Price: ${money(st.price)}`;
+    if (el.modalOwned) el.modalOwned.textContent = `Owned: ${ownedQty(id)}`;
+    if (el.modalPotential) el.modalPotential.textContent = `Potential: ${computePotential(ch, st)}`;
+    if (el.modalPop) el.modalPop.textContent = `Popularity: ${computePopularity(ch, st)}`;
+    if (el.modalCap) el.modalCap.textContent = `Cap: ${money(st.cap)}`;
+    if (el.modalFrozen) el.modalFrozen.textContent = `Status: ${(st.frozen || st.vol <= 0) ? "FROZEN" : "LIVE"}`;
+
+    if (el.modalLinkBtn) {
+      if (media.link) {
+        el.modalLinkBtn.href = media.link;
+        el.modalLinkBtn.textContent = "Open Dossier";
+        el.modalLinkBtn.style.pointerEvents = "auto";
+        el.modalLinkBtn.style.opacity = "1";
+      } else {
+        el.modalLinkBtn.removeAttribute("href");
+        el.modalLinkBtn.textContent = "No link";
+        el.modalLinkBtn.style.pointerEvents = "none";
+        el.modalLinkBtn.style.opacity = ".55";
+      }
+    }
+
+    if (el.modalBuyBtn) el.modalBuyBtn.onclick = () => buy(id, 1);
+    if (el.modalSellBtn) el.modalSellBtn.onclick = () => sell(id, 1);
+
+    renderSpark(st.hist || []);
+    renderHistory(st.hist || []);
+
+    showModal(el.detailModal);
+  }
+
+  function closeDetailModal(){
+    if (!el.detailModal) return;
+    hideModal(el.detailModal);
+  }
+
+  function renderSpark(hist){
+    const c = el.spark;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+
+    const w = c.width, h = c.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const data = Array.isArray(hist) ? hist.slice(-60) : [];
+    if (data.length < 2) return;
+
+    let min = Infinity, max = -Infinity;
+    for (const v of data) { min = Math.min(min, v); max = Math.max(max, v); }
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return;
+    if (max - min < 1e-9) { max = min + 1; }
+
+    const pad = 10;
+    const dx = (w - pad * 2) / (data.length - 1);
+
+    ctx.globalAlpha = 0.9;
+    ctx.lineWidth = 2;
+
+    // stroke color: use default (CSS doesn't control canvas); pick neutral
+    ctx.strokeStyle = "rgba(234,242,255,.9)";
+
+    ctx.beginPath();
+    for (let i = 0; i < data.length; i++) {
+      const x = pad + i * dx;
+      const t = (data[i] - min) / (max - min);
+      const y = pad + (1 - t) * (h - pad * 2);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // baseline
+    ctx.globalAlpha = 0.25;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad, h - pad);
+    ctx.lineTo(w - pad, h - pad);
+    ctx.stroke();
+  }
+
+  function renderHistory(hist){
+    if (!el.historyList) return;
+    el.historyList.innerHTML = "";
+    const data = Array.isArray(hist) ? hist.slice(-12) : [];
+    for (let i = data.length - 1; i >= 0; i--) {
+      const row = document.createElement("div");
+      row.className = "hRow";
+      const left = document.createElement("div");
+      left.textContent = `t-${data.length - 1 - i}`;
+      const right = document.createElement("div");
+      right.style.fontWeight = "1000";
+      right.textContent = money(data[i]);
+      row.appendChild(left);
+      row.appendChild(right);
+      el.historyList.appendChild(row);
+    }
+  }
+
+  /*****************************************************************
+   * 18) EDIT PANEL (password-gated)
+   *****************************************************************/
+  let adminInjected = false;
+
+  function renderEditPanel(){
+    if (!el.editPanel) return;
+
+    // fill select
+    const all = getAllCharacters();
+    normalizeStocks(all);
+
+    if (el.editCharSelect) {
+      el.editCharSelect.innerHTML = "";
+      for (const ch of all) {
+        const opt = document.createElement("option");
+        opt.value = ch.id;
+        opt.textContent = `${ch.name} (${ch.id})`;
+        el.editCharSelect.appendChild(opt);
+      }
+      // keep current selection in edit
+      if (all.some(c => c.id === state.ui.selectedId)) el.editCharSelect.value = state.ui.selectedId;
+      else el.editCharSelect.value = all[0]?.id || "";
+    }
+
+    function syncFields(){
+      const id = el.editCharSelect ? el.editCharSelect.value : state.ui.selectedId;
+      state.ui.selectedId = id;
+      persist();
+
+      const m = getMediaFor(id);
+      if (el.editImg) el.editImg.value = m.image || "";
+      if (el.editLink) el.editLink.value = m.link || "";
+
+      if (el.bulkJson) {
+        el.bulkJson.value =
+`// Bulk JSON formats supported:
+// 1) { "id": { "image": "...", "link": "..." }, ... }
+// 2) [ { "id": "...", "image": "...", "link": "..." }, ... ]
+//
+// Example:
+// {
+//   "kaien_dazhen": { "image":"https://...", "link":"https://..." }
+// }`;
+      }
+
+      renderWanted();
+      renderMarket();
+    }
+
+    if (el.editCharSelect) {
+      el.editCharSelect.onchange = syncFields;
+    }
+
+    if (el.saveEditBtn) {
+      el.saveEditBtn.onclick = () => {
+        const id = el.editCharSelect?.value || state.ui.selectedId;
+        if (!id) return;
+
+        const img = safeUrl(el.editImg?.value || "");
+        const link = safeUrl(el.editLink?.value || "");
+
+        mediaOverrides[id] = { image: img, link };
+        saveMediaOverrides();
+        notify("Saved.");
+        renderWanted();
+        renderMarket();
+        renderProjects();
+      };
+    }
+
+    if (el.resetEditBtn) {
+      el.resetEditBtn.onclick = () => {
+        const id = el.editCharSelect?.value || state.ui.selectedId;
+        if (!id) return;
+        delete mediaOverrides[id];
+        saveMediaOverrides();
+        notify("Reset.");
+        syncFields();
+        renderProjects();
+      };
+    }
+
+    if (el.applyBulkBtn) {
+      el.applyBulkBtn.onclick = () => {
+        const raw = String(el.bulkJson?.value || "").trim();
+        if (!raw) return;
+
+        // allow comments starting with //
+        const cleaned = raw
+          .split("\n")
+          .filter(line => !line.trim().startsWith("//"))
+          .join("\n")
+          .trim();
+
+        let parsed;
+        try { parsed = JSON.parse(cleaned); }
+        catch { return notify("Bulk JSON invalid."); }
+
+        const applyOne = (obj) => {
+          if (!obj || typeof obj !== "object") return;
+          const id = String(obj.id || "").trim();
+          if (!id) return;
+          const img = safeUrl(obj.image || "");
+          const link = safeUrl(obj.link || "");
+          mediaOverrides[id] = { image: img, link };
+        };
+
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) applyOne(item);
+        } else if (parsed && typeof parsed === "object") {
+          // mapping
+          for (const [id, v] of Object.entries(parsed)) {
+            applyOne({ id, ...(v || {}) });
+          }
+        }
+
+        saveMediaOverrides();
+        notify("Bulk applied.");
+        syncFields();
+        renderProjects();
+      };
+    }
+
+    // inject admin tools once
+    if (!adminInjected) {
+      injectAdminTools();
+      adminInjected = true;
+    }
+
+    syncFields();
+  }
+
+  function injectAdminTools(){
+    if (!el.editPanel) return;
+
+    // Wrap existing edit controls into grid style (CSS already has .editGrid)
+    // We won't reorder your HTML nodes; only append admin panel below.
+    const adminWrap = document.createElement("div");
+    adminWrap.className = "adminWrap";
+
+    const title = document.createElement("div");
+    title.className = "panelTitle";
+    title.textContent = "Admin Panel";
+
+    const hint = document.createElement("div");
+    hint.className = "hint small";
+    hint.textContent = "Control volatility, caps, freeze, wallet, and add/remove custom characters.";
+
+    const grid = document.createElement("div");
+    grid.className = "adminGrid";
+
+    // --- Stock Controls
+    const stockCard = document.createElement("div");
+    stockCard.className = "adminCard";
+
+    const stockTitle = document.createElement("div");
+    stockTitle.className = "adminTitle";
+    stockTitle.textContent = "Stock Controls";
+
+    const sel = document.createElement("select");
+    sel.className = "select full";
+
+    const vol = document.createElement("input");
+    vol.className = "input";
+    vol.type = "number";
+    vol.step = "0.1";
+    vol.placeholder = "Volatility (0 = frozen)";
+
+    const cap = document.createElement("input");
+    cap.className = "input";
+    cap.type = "number";
+    cap.step = "1";
+    cap.placeholder = "Max Cap";
+
+    const price = document.createElement("input");
+    price.className = "input";
+    price.type = "number";
+    price.step = "1";
+    price.placeholder = "Set Price";
+
+    const btns = document.createElement("div");
+    btns.className = "adminBtns";
+
+    const applyVolBtn = document.createElement("button");
+    applyVolBtn.className = "btn ghost";
+    applyVolBtn.textContent = "Apply Volatility";
+
+    const applyCapBtn = document.createElement("button");
+    applyCapBtn.className = "btn ghost";
+    applyCapBtn.textContent = "Apply Cap";
+
+    const applyPriceBtn = document.createElement("button");
+    applyPriceBtn.className = "btn ghost";
+    applyPriceBtn.textContent = "Set Price";
+
+    const freezeBtn = document.createElement("button");
+    freezeBtn.className = "btn ghost";
+    freezeBtn.textContent = "Toggle Freeze";
+
+    const resetStocksBtn = document.createElement("button");
+    resetStocksBtn.className = "btn ghost";
+    resetStocksBtn.textContent = "Reset ALL Stocks (defaults)";
+
+    btns.appendChild(applyVolBtn);
+    btns.appendChild(applyCapBtn);
+    btns.appendChild(applyPriceBtn);
+    btns.appendChild(freezeBtn);
+    btns.appendChild(resetStocksBtn);
+
+    stockCard.appendChild(stockTitle);
+    stockCard.appendChild(sel);
+    stockCard.appendChild(vol);
+    stockCard.appendChild(cap);
+    stockCard.appendChild(price);
+    stockCard.appendChild(btns);
+
+    // --- Wallet Controls
+    const walletCard = document.createElement("div");
+    walletCard.className = "adminCard";
+
+    const walletTitle = document.createElement("div");
+    walletTitle.className = "adminTitle";
+    walletTitle.textContent = "Wallet / Holdings";
+
+    const cashAdd = document.createElement("input");
+    cashAdd.className = "input";
+    cashAdd.type = "number";
+    cashAdd.step = "1";
+    cashAdd.placeholder = "Give cash (e.g. 1000000)";
+
+    const cashSet = document.createElement("input");
+    cashSet.className = "input";
+    cashSet.type = "number";
+    cashSet.step = "1";
+    cashSet.placeholder = "Set cash (absolute)";
+
+    const sharesSet = document.createElement("input");
+    sharesSet.className = "input";
+    sharesSet.type = "number";
+    sharesSet.step = "1";
+    sharesSet.placeholder = "Set owned shares for selected (absolute)";
+
+    const wBtns = document.createElement("div");
+    wBtns.className = "adminBtns";
+
+    const giveCashBtn = document.createElement("button");
+    giveCashBtn.className = "btn ghost";
+    giveCashBtn.textContent = "Give Cash";
+
+    const setCashBtn = document.createElement("button");
+    setCashBtn.className = "btn ghost";
+    setCashBtn.textContent = "Set Cash";
+
+    const setSharesBtn = document.createElement("button");
+    setSharesBtn.className = "btn ghost";
+    setSharesBtn.textContent = "Set Owned Shares";
+
+    const lockBtn = document.createElement("button");
+    lockBtn.className = "btn ghost";
+    lockBtn.textContent = "Lock Admin (log out)";
+
+    wBtns.appendChild(giveCashBtn);
+    wBtns.appendChild(setCashBtn);
+    wBtns.appendChild(setSharesBtn);
+    wBtns.appendChild(lockBtn);
+
+    walletCard.appendChild(walletTitle);
+    walletCard.appendChild(cashAdd);
+    walletCard.appendChild(cashSet);
+    walletCard.appendChild(sharesSet);
+    walletCard.appendChild(wBtns);
+
+    // --- Custom Character Controls (add/remove)
+    const charCard = document.createElement("div");
+    charCard.className = "adminCard";
+
+    const charTitle = document.createElement("div");
+    charTitle.className = "adminTitle";
+    charTitle.textContent = "Custom Characters (add/remove)";
+
+    const idIn = document.createElement("input");
+    idIn.className = "input";
+    idIn.placeholder = "id (unique, no spaces)";
+
+    const nameIn = document.createElement("input");
+    nameIn.className = "input";
+    nameIn.placeholder = "name";
+
+    const typeIn = document.createElement("input");
+    typeIn.className = "input";
+    typeIn.placeholder = "type (human/npc/maji/etc)";
+
+    const tagsIn = document.createElement("input");
+    tagsIn.className = "input";
+    tagsIn.placeholder = "tags (comma nums, e.g. 0,2,5)";
+
+    const baseIn = document.createElement("input");
+    baseIn.className = "input";
+    baseIn.type = "number";
+    baseIn.step = "1";
+    baseIn.placeholder = "base price";
+
+    const minIn = document.createElement("input");
+    minIn.className = "input";
+    minIn.type = "number";
+    minIn.step = "1";
+    minIn.placeholder = "min";
+
+    const maxIn = document.createElement("input");
+    maxIn.className = "input";
+    maxIn.type = "number";
+    maxIn.step = "1";
+    maxIn.placeholder = "max";
+
+    const cBtns = document.createElement("div");
+    cBtns.className = "adminBtns";
+
+    const addBtn = document.createElement("button");
+    addBtn.className = "btn ghost";
+    addBtn.textContent = "Add / Update Custom";
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "btn ghost";
+    removeBtn.textContent = "Remove Custom by id";
+
+    cBtns.appendChild(addBtn);
+    cBtns.appendChild(removeBtn);
+
+    charCard.appendChild(charTitle);
+    charCard.appendChild(idIn);
+    charCard.appendChild(nameIn);
+    charCard.appendChild(typeIn);
+    charCard.appendChild(tagsIn);
+    charCard.appendChild(baseIn);
+    charCard.appendChild(minIn);
+    charCard.appendChild(maxIn);
+    charCard.appendChild(cBtns);
+
+    // layout: 3 cards
+    grid.appendChild(stockCard);
+    grid.appendChild(walletCard);
+    grid.appendChild(charCard);
+
+    adminWrap.appendChild(title);
+    adminWrap.appendChild(hint);
+    adminWrap.appendChild(grid);
+
+    // append to edit panel
+    el.editPanel.appendChild(adminWrap);
+
+    function rebuildStockSelect(){
+      const all = getAllCharacters();
+      normalizeStocks(all);
+
+      sel.innerHTML = "";
+      for (const ch of all) {
+        const opt = document.createElement("option");
+        opt.value = ch.id;
+        opt.textContent = `${ch.name} (${ch.id})`;
+        sel.appendChild(opt);
+      }
+      sel.value = state.ui.selectedId || all[0]?.id || "";
+      refreshStockInputs();
+    }
+
+    function refreshStockInputs(){
+      const id = sel.value;
+      const st = state.stocks[id];
+      if (!st) return;
+      vol.value = String(st.vol);
+      cap.value = String(Math.round(st.cap));
+      price.value = String(Math.round(st.price));
+      freezeBtn.textContent = (st.frozen || st.vol <= 0) ? "Unfreeze" : "Freeze";
+    }
+
+    sel.addEventListener("change", () => {
+      state.ui.selectedId = sel.value;
+      persist();
+      refreshStockInputs();
+      renderWanted();
+      renderMarket();
+    });
+
+    applyVolBtn.addEventListener("click", () => {
+      const id = sel.value;
+      const st = state.stocks[id];
+      if (!st) return;
+      st.vol = clamp(nnum(vol.value, st.vol), 0, 1000);
+      if (st.vol <= 0) st.frozen = true;
+      persist();
+      refreshStockInputs();
+      renderAll();
+      notify("Volatility updated.");
+    });
+
+    applyCapBtn.addEventListener("click", () => {
+      const id = sel.value;
+      const st = state.stocks[id];
+      if (!st) return;
+      const v = Math.max(0, nnum(cap.value, st.cap));
+      st.cap = Math.max(v, st.price);
+      persist();
+      refreshStockInputs();
+      renderAll();
+      notify("Cap updated.");
+    });
+
+    applyPriceBtn.addEventListener("click", () => {
+      const id = sel.value;
+      const st = state.stocks[id];
+      if (!st) return;
+      const v = Math.max(0, nnum(price.value, st.price));
+      st.price = Math.min(v, st.cap);
+      st.cap = Math.max(st.cap, st.price);
+      persist();
+      refreshStockInputs();
+      renderAll();
+      notify("Price updated.");
+    });
+
+    freezeBtn.addEventListener("click", () => {
+      const id = sel.value;
+      const st = state.stocks[id];
+      if (!st) return;
+      st.frozen = !st.frozen;
+      persist();
+      refreshStockInputs();
+      renderAll();
+      notify(st.frozen ? "Frozen." : "Unfrozen.");
+    });
+
+    resetStocksBtn.addEventListener("click", () => {
+      const all = getAllCharacters();
+      for (const ch of all) state.stocks[ch.id] = defaultStockFor(ch);
+      persist();
+      refreshStockInputs();
+      renderAll();
+      notify("All stocks reset.");
+    });
+
+    giveCashBtn.addEventListener("click", () => {
+      const amt = nnum(cashAdd.value, 0);
+      state.wallet.cash = Math.max(0, state.wallet.cash + amt);
+      cashAdd.value = "";
+      persist();
+      renderTopStats();
+      renderPortfolio();
+      notify("Cash given.");
+    });
+
+    setCashBtn.addEventListener("click", () => {
+      const v = Math.max(0, nnum(cashSet.value, state.wallet.cash));
+      state.wallet.cash = v;
+      cashSet.value = "";
+      persist();
+      renderTopStats();
+      renderPortfolio();
+      notify("Cash set.");
+    });
+
+    setSharesBtn.addEventListener("click", () => {
+      const id = sel.value;
+      const v = Math.max(0, Math.floor(nnum(sharesSet.value, 0)));
+      if (!v) delete state.wallet.holdings[id];
+      else state.wallet.holdings[id] = v;
+      sharesSet.value = "";
+      persist();
+      renderAll();
+      notify("Shares set.");
+    });
+
+    lockBtn.addEventListener("click", () => {
+      setAdminAuthed(false);
+      stopSim();
+      notify("Admin locked.");
+      setView("market");
+    });
+
+    addBtn.addEventListener("click", () => {
+      const id = String(idIn.value || "").trim();
+      if (!id || /\s/.test(id)) return notify("Invalid id (no spaces).");
+
+      const tagNums = String(tagsIn.value || "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(s => nnum(s, 0));
+
+      const obj = {
+        id,
+        name: String(nameIn.value || id),
+        type: String(typeIn.value || "custom"),
+        tags: tagNums,
+        stock: 0,
+        base: Math.max(0, nnum(baseIn.value, 100)),
+        min: Math.max(0, nnum(minIn.value, 0)),
+        max: Math.max(0, nnum(maxIn.value, 0)),
+      };
+
+      if (!Array.isArray(state.customChars)) state.customChars = [];
+      const idx = state.customChars.findIndex(x => x && x.id === id);
+      if (idx >= 0) state.customChars[idx] = obj;
+      else state.customChars.push(obj);
+
+      // ensure stocks exist
+      const all = getAllCharacters();
+      normalizeStocks(all);
+
+      persist();
+      rebuildStockSelect();
+      renderAll();
+      notify("Custom character saved.");
+    });
+
+    removeBtn.addEventListener("click", () => {
+      const id = String(idIn.value || "").trim();
+      if (!id) return;
+      const before = Array.isArray(state.customChars) ? state.customChars.length : 0;
+      state.customChars = (state.customChars || []).filter(x => x && x.id !== id);
+      if (state.customChars.length === before) return notify("Not found in custom list.");
+      delete state.stocks[id];
+      delete state.wallet.holdings[id];
+      delete mediaOverrides[id];
+      saveMediaOverrides();
+      persist();
+      rebuildStockSelect();
+      renderAll();
+      notify("Custom character removed.");
+    });
+
+    rebuildStockSelect();
+  }
+
+  /*****************************************************************
+   * 19) INPUT EVENTS (filters + sim buttons + nav)
+   *****************************************************************/
+  function wireEvents(){
+    // nav
+    for (const b of el.pills()) {
+      b.addEventListener("click", () => {
+        const target = b.dataset.nav;
+        if (target === "edit") {
+          if (!isAdminAuthed()) return openAdminPrompt();
+          setView("edit");
+        } else {
+          setView(target);
+        }
+      });
+    }
+
+    // market filters
+    if (el.searchInput) {
+      el.searchInput.addEventListener("input", () => {
+        state.ui.search = el.searchInput.value || "";
+        persist();
+        renderMarket();
+      });
+    }
+    if (el.arcSelect) {
+      el.arcSelect.addEventListener("change", () => {
+        state.ui.arc = el.arcSelect.value || "all";
+        persist();
+        renderMarket();
+      });
+    }
+    if (el.typeSelect) {
+      el.typeSelect.addEventListener("change", () => {
+        state.ui.type = el.typeSelect.value || "all";
+        persist();
+        renderMarket();
+      });
+    }
+    if (el.sortSelect) {
+      el.sortSelect.addEventListener("change", () => {
+        state.ui.sort = el.sortSelect.value || "default";
+        persist();
+        renderMarket();
+      });
+    }
+
+    // sim buttons
+    if (el.speedSelect) {
+      el.speedSelect.value = String(state.sim.speedMs);
+      el.speedSelect.addEventListener("change", () => {
+        state.sim.speedMs = clamp(nnum(el.speedSelect.value, 1000), 80, 60000);
+        persist();
+        if (state.sim.running) startSim(); // restart with new speed
+      });
+    }
+
+    if (el.globalVol) {
+      el.globalVol.value = String(state.sim.globalVol);
+      el.globalVol.addEventListener("change", () => {
+        state.sim.globalVol = clamp(nnum(el.globalVol.value, 1), 0, 1000);
+        persist();
+      });
+    }
+
+    if (el.playBtn) el.playBtn.addEventListener("click", () => startSim());
+    if (el.pauseBtn) el.pauseBtn.addEventListener("click", () => stopSim());
+
+    if (el.step1Btn) el.step1Btn.addEventListener("click", () => {
+      stopSim();
+      stepOneDay();
+      persist();
+      renderAll();
+    });
+
+    if (el.step10Btn) el.step10Btn.addEventListener("click", () => {
+      stopSim();
+      for (let i = 0; i < 10; i++) stepOneDay();
+      persist();
+      renderAll();
+    });
+
+    // reset portfolio
+    if (el.resetAllBtn) el.resetAllBtn.addEventListener("click", resetPortfolio);
+
+    // modal close
+    if (el.closeModalBtn) el.closeModalBtn.addEventListener("click", closeDetailModal);
+    if (el.modalBackdrop) {
+      el.modalBackdrop.addEventListener("click", () => {
+        if (!el.detailModal?.classList.contains("hidden")) closeDetailModal();
+        if (adminModalEl && !adminModalEl.classList.contains("hidden")) hideModal(adminModalEl);
+      });
+    }
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        if (!el.detailModal?.classList.contains("hidden")) closeDetailModal();
+        if (adminModalEl && !adminModalEl.classList.contains("hidden")) hideModal(adminModalEl);
+      }
+    });
+  }
+
+  /*****************************************************************
+   * 20) RENDER ALL
+   *****************************************************************/
+  function renderAll(){
+    renderTopStats();
+    renderWanted();
+    renderPortfolio();
+    renderWatch();
+    renderMarket();
+    if (state.ui.view === "projects") renderProjects();
+    if (state.ui.view === "edit" && isAdminAuthed()) renderEditPanel();
+  }
+
+  /*****************************************************************
+   * 21) BOOT
    *****************************************************************/
   function boot(){
-    injectStyles();
-    root = ensureRoot();
+    // sanity: if market grid had no grid CSS, we force it to use projectsGrid layout.
+    // (This is the "characters in a GRID" fix.)
+    if (el.marketGrid) el.marketGrid.classList.add("projectsGrid");
 
-    modalBack = document.createElement("div");
-    modalBack.className = "gb-modal-back";
-    modalBack.addEventListener("click", (e) => {
-      if (e.target === modalBack) closeModal();
-    });
-    document.body.appendChild(modalBack);
-
-    // Make sure folders always exist
-    for (const f of FOLDERS) {
-      if (!state.folders[f]) state.folders[f] = { points: DEFAULT_POINTS };
-      if (typeof state.folders[f].points !== "number") state.folders[f].points = DEFAULT_POINTS;
-    }
-
-    // Make sure every character stock exists (this is the "add everyone" safety net)
-    for (const ch of BASE_CHARACTERS) {
-      if (!state.stocks[ch.id]) state.stocks[ch.id] = defaultStockForChar(ch);
-    }
-
+    const all = getAllCharacters();
+    normalizeStocks(all);
     persist();
-    render();
 
-    // engine loop
-    setInterval(() => {
-      tickStocks();
-      persist();
-      // re-render only if on Market (keeps it smooth)
-      if (state.ui.tab === "Market") render();
-    }, 900);
+    wireEvents();
+
+    // default view
+    renderView();
+
+    // if sim was running, resume
+    if (state.sim.running) startSim();
   }
 
   if (document.readyState === "loading") {
