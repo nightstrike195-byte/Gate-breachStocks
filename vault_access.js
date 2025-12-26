@@ -1,6 +1,6 @@
 /* ===========================
    FILE NAME MUST BE: vault_access.js
-   Login (J/B/R/K/M) + Admin Invest Lock (NO app.js edits)
+   Login (J/B/R/K/M) + Admin Invest Lock (NO app.js edits, NO HTML edits)
    =========================== */
 
 (() => {
@@ -8,10 +8,15 @@
 
   /*****************************************************************
    * 0) ADMIN INVEST PASSWORD (EASY TO CHANGE)
+   * - Only admins should know this.
+   * - Changing this changes the unlock password immediately.
    *****************************************************************/
   const ADMIN_INVEST_PASSWORD = "CHANGE_ME"; // <-- admins change this
 
+  // admin unlock is session-only (resets when tab/browser closes)
   const ADMIN_KEY = "gb_admin_invest_authed_v1";
+
+  // login persists (so returning later still remembers who you were)
   const LOGIN_KEY = "gb_portfolio_login_v1";
 
   /*****************************************************************
@@ -27,14 +32,14 @@
     marcus: { vault: "M", password: "Sardine", displayName: "Marcus" },
   });
 
-  const VAULTS = ["J", "M", "B", "K", "R"];
+  // the only valid vault folders
+  const VAULTS = ["J", "B", "R", "K", "M"];
 
   /*****************************************************************
    * 2) HELPERS
    *****************************************************************/
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-
   const norm = (s) => String(s || "").trim().toLowerCase();
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -67,12 +72,16 @@
     try { localStorage.removeItem(LOGIN_KEY); } catch {}
   }
 
+  function isLoggedIn() {
+    const s = getLogin();
+    const v = String(s?.vault || "").toUpperCase();
+    return !!(s && VAULTS.includes(v));
+  }
+
   /*****************************************************************
-   * 3) UI: relabel Cash -> Points
+   * 3) UI: relabel Cash -> Points (text only)
    *****************************************************************/
   function relabelPoints() {
-    // In your HTML, "Cash" label is a .kpiLabel inside the Portfolio panel
-    // We just rename display text.
     const labels = $$(".kpiLabel");
     for (const el of labels) {
       if (norm(el.textContent) === "cash") el.textContent = "Points";
@@ -80,10 +89,28 @@
   }
 
   /*****************************************************************
-   * 4) UI: TOP RIGHT LOGIN BUTTON + STATUS CHIP
+   * 4) UI: Ensure Login button exists TOP RIGHT (no HTML edits)
    *****************************************************************/
+  function ensureLoginButton() {
+    const topRight = $(".topRight");
+    if (!topRight) return;
+
+    let btn = $("#loginBtn");
+    if (btn) return;
+
+    btn = document.createElement("button");
+    btn.id = "loginBtn";
+    btn.type = "button";
+    // reuse your existing styles if present; fall back to inline if not
+    btn.className = "btn ghost";
+    btn.textContent = "Login";
+    btn.style.cssText = btn.style.cssText || "margin-left:10px;";
+
+    // put it at far right of the topRight row
+    topRight.appendChild(btn);
+  }
+
   function ensureStatusChip() {
-    // Make a small text next to Login showing who is logged in
     const topRight = $(".topRight");
     if (!topRight) return;
 
@@ -93,9 +120,10 @@
     chip = document.createElement("div");
     chip.id = "loginStatusChip";
     chip.style.cssText =
-      "margin-right:10px; font-size:12px; opacity:.85; align-self:center; white-space:nowrap;";
+      "margin-left:auto; margin-right:10px; font-size:12px; opacity:.85; align-self:center; white-space:nowrap;";
     chip.textContent = "Not logged in";
-    // insert before login button if possible
+
+    // Insert chip before login button, if button exists
     const loginBtn = $("#loginBtn");
     if (loginBtn && loginBtn.parentElement === topRight) {
       topRight.insertBefore(chip, loginBtn);
@@ -113,7 +141,7 @@
   }
 
   /*****************************************************************
-   * 5) LOGIN MODAL
+   * 5) LOGIN MODAL (injected)
    *****************************************************************/
   function ensureLoginModal() {
     if ($("#gbLoginModal")) return;
@@ -199,18 +227,18 @@
     const modal = $("#gbLoginModal");
     const closeBtn = $("#gbLoginClose");
 
-    function hideErr() {
+    const hideErr = () => {
       const el = $("#gbLoginErr");
       if (!el) return;
       el.textContent = "";
       el.style.display = "none";
-    }
-    function showErr(msg) {
+    };
+    const showErr = (msg) => {
       const el = $("#gbLoginErr");
       if (!el) return;
       el.textContent = msg;
       el.style.display = "block";
-    }
+    };
 
     function openModal() {
       modal.style.display = "flex";
@@ -241,23 +269,23 @@
 
       const rec = USERS[u];
       if (!rec) return showErr("Unknown username.");
-
       if (p !== rec.password) return showErr("Wrong password.");
 
-      // Save session
+      // persist login
       setLogin({ name: rec.displayName, vault: rec.vault, at: Date.now() });
       updateStatusChip();
+      refreshLoginButtonText();
 
-      // Switch to the correct folder using Projects -> Use Folder
+      // select their folder (so portfolio/points/etc match that vault)
       await forceSelectFolder(rec.vault);
 
-      // close
       closeModal();
     });
 
     $("#gbLogoutBtn").addEventListener("click", () => {
       clearLogin();
       updateStatusChip();
+      refreshLoginButtonText();
       closeModal();
     });
 
@@ -278,7 +306,7 @@
 
   /*****************************************************************
    * 6) FORCE SELECT FOLDER (NO app.js edits)
-   * Uses your existing Projects cards:
+   * Uses Projects cards:
    *   CardName: "Folder X"
    *   Button: "Use Folder"
    *****************************************************************/
@@ -290,14 +318,12 @@
 
   function findFolderCard(letter) {
     const L = String(letter || "").toUpperCase();
-    // The projects view is rendered into a grid; we search for .cardName containing "Folder L"
     const names = $$(".cardName");
     for (const n of names) {
       const t = String(n.textContent || "");
       if (t.includes(`Folder ${L}`)) {
-        // climb to card root
         let card = n;
-        for (let i = 0; i < 6 && card; i++) {
+        for (let i = 0; i < 8 && card; i++) {
           if (card.classList && card.classList.contains("card")) break;
           card = card.parentElement;
         }
@@ -311,28 +337,27 @@
     const L = String(letter || "").toUpperCase();
     if (!VAULTS.includes(L)) return false;
 
-    // go to Projects
+    // go Projects
     await clickNav("projects");
-    await sleep(50);
 
-    // projects view should now have folder cards
-    let card = findFolderCard(L);
-
-    // if not found, give it a moment more (render timing)
-    if (!card) {
-      await sleep(120);
+    // wait for cards to appear (render timing)
+    const deadline = Date.now() + 2200;
+    let card = null;
+    while (Date.now() < deadline) {
       card = findFolderCard(L);
+      if (card) break;
+      await sleep(80);
     }
     if (!card) {
-      // If still not found, just return (won't crash)
+      // if we can't find the folder, don't crash
+      await clickNav("market");
       return false;
     }
 
-    // click "Use Folder" button inside this card
-    const useBtn = $$("button", card).find(b => norm(b.textContent) === "use folder");
+    // click "Use Folder"
+    const useBtn = $$("button", card).find((b) => norm(b.textContent) === "use folder");
     if (useBtn) useBtn.click();
 
-    // go back to Market
     await sleep(30);
     await clickNav("market");
     return true;
@@ -344,37 +369,24 @@
    *  - logged in (one of the 5 accounts)
    *  - admin invest unlocked (session only)
    *****************************************************************/
-  function isLoggedIn() {
-    const s = getLogin();
-    return !!(s && VAULTS.includes(String(s.vault || "").toUpperCase()));
-  }
-
   function isBuySellButton(el) {
     if (!el) return false;
     const btn = el.closest ? el.closest("button") : null;
     if (!btn) return false;
 
-    // matches your app.js patterns:
-    // .btn.buy / .btn.sell, plus bulk "Buy Selected" / "Sell Selected"
     const cls = btn.classList;
     const text = norm(btn.textContent);
 
+    // .btn.buy / .btn.sell catches wanted + modal buttons if they use those classes
     if (cls && cls.contains("btn") && (cls.contains("buy") || cls.contains("sell"))) return true;
-    if (text === "buy selected" || text === "sell selected") return true;
-    if (text === "buy" || text === "sell" || text === "buy selected" || text === "sell selected") return true;
 
-    // wanted panel has BUY/SELL uppercase
-    if (text === "buy" || text === "sell") return true;
+    // catch text-only buttons (bulk, etc.)
+    if (text === "buy" || text === "sell" || text === "buy selected" || text === "sell selected") return true;
 
     return false;
   }
 
-  function blockInvest(message) {
-    alert(message);
-  }
-
   function installInvestLock() {
-    // Capture phase so we can stop app.js handlers before they run.
     document.addEventListener("click", (e) => {
       if (!isBuySellButton(e.target)) return;
 
@@ -383,7 +395,7 @@
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
-        blockInvest("Login required to invest.");
+        alert("Login required to invest.");
         if (window.GBLoginUI) window.GBLoginUI.open();
         return;
       }
@@ -393,8 +405,10 @@
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
+
         const pass = prompt("Admin Invest Password required:");
         if (pass === null) return;
+
         if (pass === ADMIN_INVEST_PASSWORD) {
           setAdminAuthed(true);
           alert("Investing unlocked (this session). Click again to buy/sell.");
@@ -404,31 +418,38 @@
         return;
       }
 
-      // allowed: do nothing and let app.js handle it
+      // allowed: let app.js handle it
     }, true);
   }
 
   /*****************************************************************
-   * 8) WIRE LOGIN BUTTON
+   * 8) LOGIN BUTTON WIRING
    *****************************************************************/
+  function refreshLoginButtonText() {
+    const btn = $("#loginBtn");
+    if (!btn) return;
+    const sess = getLogin();
+    btn.textContent = sess ? "Account" : "Login";
+  }
+
   function wireLoginButton() {
     const btn = $("#loginBtn");
     if (!btn) return;
+
+    // avoid double-binding
+    if (btn.dataset.vaultAccessBound === "1") return;
+    btn.dataset.vaultAccessBound = "1";
 
     btn.addEventListener("click", () => {
       if (window.GBLoginUI) window.GBLoginUI.open();
     });
 
-    // Optional: change button text when logged in
-    const refresh = () => {
-      const sess = getLogin();
-      btn.textContent = sess ? "Account" : "Login";
-    };
-    refresh();
+    refreshLoginButtonText();
 
+    // sync across tabs
     window.addEventListener("storage", (ev) => {
       if (ev.key === LOGIN_KEY) {
-        refresh();
+        refreshLoginButtonText();
         updateStatusChip();
       }
     });
@@ -438,18 +459,28 @@
    * 9) INIT
    *****************************************************************/
   function init() {
-    relabelPoints();
+    // make sure button exists (top right) without HTML changes
+    ensureLoginButton();
     ensureStatusChip();
-    updateStatusChip();
+
+    // text tweaks
+    relabelPoints();
+
+    // modal + button wiring
     ensureLoginModal();
     wireLoginButton();
+
+    // status
+    updateStatusChip();
+    refreshLoginButtonText();
+
+    // invest lock
     installInvestLock();
 
-    // If already logged in, try to select their folder once at load
+    // if already logged in, try to auto-select their folder once
     const sess = getLogin();
     if (sess?.vault) {
-      // don’t block page load; attempt after a moment
-      setTimeout(() => { forceSelectFolder(sess.vault); }, 300);
+      setTimeout(() => { forceSelectFolder(sess.vault); }, 350);
     }
   }
 
@@ -459,4 +490,11 @@
     init();
   }
 
+  /*****************************************************************
+   * NOTE ABOUT SAVING:
+   * - Your login is saved in localStorage, so it remains when you come back later.
+   * - Your portfolio/stock holdings persistence depends on app.js storage (localStorage),
+   *   which normally WILL still be there a week later unless browser storage is cleared.
+   * - Admin invest unlock is sessionStorage (session only), so it will reset later.
+   *****************************************************************/
 })();
